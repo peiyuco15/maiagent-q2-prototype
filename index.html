@@ -1,0 +1,1555 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 助理上架審核原型</title>
+<style>
+:root{
+  --primary:#1d63d6; --primary-weak:#e8f0fd; --bg:#f4f6fa; --card:#fff; --border:#e4e7ee;
+  --text:#1f2329; --muted:#6b7280; --faint:#9aa1ad;
+  --gray:#6b7280; --gray-bg:#f0f1f4;
+  --orange:#c46a00; --orange-bg:#fff4e5;
+  --red:#c9372c; --red-bg:#fdeceb;
+  --green:#1a7f45; --green-bg:#e7f6ed;
+  --purple:#6d4ad6; --purple-bg:#f0ebfd;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.55}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit}
+.app{display:grid;grid-template-columns:232px 1fr;grid-template-rows:56px 1fr;height:calc(100vh - 40px);margin-top:40px}
+/* header */
+.top{grid-column:1/3;display:flex;align-items:center;gap:16px;padding:0 20px;background:#fff;border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:.12em;color:var(--primary);width:212px}
+.logo i{width:26px;height:20px;border-radius:5px;background:linear-gradient(135deg,#1d63d6,#3fb0f0);display:inline-block}
+.crumb{color:var(--muted)}
+.spacer{flex:1}
+.tl{border:none;background:none;color:#4b5563;padding:6px 8px;border-radius:6px;font-size:13.5px}
+.tl:hover{background:var(--gray-bg)}
+.tl.ai{color:var(--purple);font-weight:600}
+.userbtn{display:flex;align-items:center;gap:8px;border:none;background:none;padding:4px 6px;border-radius:8px;text-align:left}
+.userbtn:hover{background:var(--gray-bg)}
+.u-txt{display:flex;flex-direction:column;line-height:1.2}
+.u-txt .sub{font-size:12px}
+.caret{margin-left:auto;color:var(--faint);font-size:12px;padding-left:6px}
+.umenu{position:absolute;top:92px;right:16px;width:200px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 40px rgba(0,0,0,.14);z-index:15;overflow:hidden}
+.nav.inert{color:#8a919c}
+.nav.grp{font-weight:500;color:var(--text);cursor:default}
+.nav.grp.inert{color:#8a919c;cursor:pointer}
+.newtag{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:var(--purple);background:var(--purple-bg);border-radius:4px;padding:0 5px;vertical-align:middle}
+.beta{margin-left:6px;font-size:10.5px;font-weight:700;color:#fff;background:var(--primary);border-radius:4px;padding:0 5px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.search{border:1px solid var(--border);border-radius:8px;padding:7px 10px;width:240px;background:#fff}
+select.inp.sm{width:auto;padding:6px 8px}
+.newfield{border-color:#c9b8f5!important;background:#faf8ff}
+.tscroll{overflow-x:auto}
+.toolbar input.search{width:260px;flex:none}
+.atable .actions{flex-wrap:nowrap}
+.atable .actions .btn{white-space:nowrap}
+.btn.link.muted{color:var(--faint)}
+.sec-h{font-size:16px;margin:0}
+.atable{min-width:900px}
+.th-sort{border:none;background:none;padding:0;font:inherit;color:inherit;font-weight:600;display:inline-flex;gap:4px;align-items:center;cursor:pointer}
+.th-sort span{color:#b7bdc8;font-size:12px}
+.th-sort.on,.th-sort.on span{color:var(--primary)}
+.atable th{white-space:nowrap}
+.atable td:nth-child(1){min-width:150px}
+.atable td:nth-child(2){min-width:180px}
+@media (max-width:1100px){.tl{display:none}}
+.star{border:none;background:none;font-size:18px;color:#c3c8d2;padding:0 2px;line-height:1}
+.star.on{color:#f0a500}
+.btn.on-toggle{border-color:#f0c25a;background:#fff8e6;color:#8a5a00}
+.mono{font-family:ui-monospace,Menlo,monospace}
+.acct{display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:start}
+.acct-side{background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 10px}
+.acct-side .c-i{width:100%;border:none;background:none;text-align:left}
+.create{display:grid;grid-template-columns:220px 1fr;gap:20px}
+.c-side{border-right:1px solid var(--border);padding-right:12px}
+.c-g{font-size:12px;color:var(--faint);margin:10px 0 4px}
+.c-i{display:flex;justify-content:space-between;padding:7px 10px;border-radius:8px;font-size:13.5px}
+.c-h{font-size:14px;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.c-main section+section{margin-top:22px}
+.c-note{margin:20px 0 0}
+button.c-i{width:100%;border:none;background:none;text-align:left;cursor:pointer;color:var(--text)}
+button.c-i:hover{background:var(--gray-bg)}
+.c-i.off{cursor:default}
+.c-i.on{background:var(--primary-weak);color:var(--primary);font-weight:600}
+.c-i.off{color:#8a919c}
+.warnc{color:#d48806;font-size:12px}
+.proto-tag{font-size:12px;color:var(--purple);background:var(--purple-bg);padding:2px 8px;border-radius:99px}
+.who{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:4px 8px}
+.who select{border:none;background:transparent;font-weight:600;outline:none}
+.avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:600;flex:none}
+.bell{position:relative;border:none;background:none;padding:6px;border-radius:8px}
+.bell:hover{background:var(--gray-bg)}
+.bell .dot{position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:11px;min-width:18px;height:18px;border-radius:9px;display:grid;place-items:center;padding:0 4px}
+/* sidebar */
+.side{background:#fff;border-right:1px solid var(--border);padding:12px;overflow:auto}
+.org{border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-weight:500;display:flex}
+.nav{display:flex;align-items:center;gap:8px;width:100%;border:none;background:none;text-align:left;padding:9px 12px;border-radius:8px;color:var(--text)}
+.nav:hover{background:var(--gray-bg)}
+.nav.on{background:var(--primary-weak);color:var(--primary);font-weight:600}
+.nav .cnt{margin-left:auto;background:var(--red);color:#fff;font-size:11px;border-radius:9px;padding:0 6px}
+.nav-group{font-size:12px;color:var(--faint);padding:12px 12px 4px}
+.nav.sub{padding-left:24px}
+.nav-sep{height:1px;background:var(--border);margin:10px 4px}
+/* main */
+.main{overflow:auto;padding:24px 28px 32px}
+.page-h{display:flex;align-items:center;gap:12px;margin-bottom:16px;min-height:36px}
+.page-h h1{font-size:20px;margin:0}
+.page-h p{margin:0;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card+.card{margin-top:16px}
+table{width:100%;border-collapse:collapse}
+th{background:#f8f9fb;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px}
+td{padding:12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr.row:hover td{background:#fafbfd;cursor:pointer}
+.name{font-weight:600}
+.sub{color:var(--muted);font-size:12.5px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.b-draft{color:var(--gray);background:var(--gray-bg)}
+.b-pending{color:var(--orange);background:var(--orange-bg)}
+.b-rejected{color:var(--red);background:var(--red-bg)}
+.b-approved{color:var(--green);background:var(--green-bg)}
+.b-acting{color:var(--purple);background:var(--purple-bg)}
+.btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:6px 14px;color:var(--text)}
+.btn:hover{border-color:#c9cfdb}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.primary:hover{background:#1755bb}
+.btn.danger{color:var(--red);border-color:#f0c4c0}
+.name-link{border:none;background:none;padding:0;font-weight:600;color:var(--text);text-align:left;cursor:pointer}
+.name-link:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+tr.row:hover .name-link{color:var(--primary)}
+.agent-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch}
+.agent-grid .card+.card{margin-top:16px}
+.sec-gap{margin-top:22px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;margin-top:4px}
+.fgrid .span2{grid-column:1/-1}
+.fgrid label.f{margin-top:12px}
+.ro{padding:8px 0;color:var(--text)}
+.f-foot{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+.test-panel{display:flex;flex-direction:column;min-height:420px;padding:0;overflow:hidden;margin-top:0!important;position:sticky;top:0;align-self:start;height:calc(100vh - 144px)}
+.tp-h{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.test-panel .log-wrap{position:relative;flex:1}
+.test-panel .log{position:absolute;inset:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#fafbfd}
+.agent-h{margin-bottom:12px}
+.tab-stack{display:grid}
+.tab-pane{grid-area:1/1}
+.tab-pane:not(.on){visibility:hidden;pointer-events:none}
+.agent-h .ic{width:32px;height:32px;border-radius:8px;font-size:14px}
+.agent-h h1{font-size:19px}
+.agent-h .sub{margin:2px 0 0}
+.id-line{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.copy{border:none;background:none;color:var(--faint);cursor:pointer;padding:0 4px;font-size:13px;border-radius:4px}
+.copy:hover{color:var(--primary);background:var(--primary-weak)}
+.back{border:none;background:none;font-size:22px;line-height:1;color:var(--muted);padding:2px 6px;border-radius:6px;cursor:pointer}
+.back:hover{background:var(--gray-bg);color:var(--text)}
+.locked input:disabled,.locked select:disabled,.locked textarea:disabled{pointer-events:none}
+.locked section{cursor:not-allowed}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(232,163,61,.55)}100%{box-shadow:0 0 0 10px rgba(232,163,61,0)}}
+.banner.pulse,.btn.pulse{animation:pulse .9s ease-out 2}
+.banner-row{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.banner.tight{padding:8px 12px;margin-bottom:12px}
+.opt{font-size:12px;font-weight:400;color:var(--faint);margin-left:4px}
+.dirty-bar{position:sticky;bottom:16px;display:flex;align-items:center;gap:8px;margin:20px 0 0;padding:10px 12px 10px 14px;background:#fff;border:1px solid #efd29c;border-radius:12px;box-shadow:0 10px 28px rgba(31,35,41,.16);color:#7a4300;font-weight:600;font-size:13.5px;z-index:2}
+.dirty-bar>span:first-child::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#e8a33d;margin-right:8px;vertical-align:middle}
+.dirty-bar[hidden],.dirty-note[hidden]{display:none}
+.dirty-note{background:#fff8e6;color:#7a4300;font-size:12.5px;padding:6px 14px;border-bottom:1px solid #f0d49a}
+.prompt-box{white-space:pre-wrap;background:#f6f7f9;border:1px solid var(--border);border-radius:8px;padding:8px 10px;max-height:120px;overflow:auto;font-size:13px}
+.banner{border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13.5px}
+.banner.info{background:var(--primary-weak);color:#24447a}
+.banner.warn{background:var(--orange-bg);color:#7a4300}
+.banner.bad{background:var(--red-bg);color:#8a2219}
+.banner.good{background:var(--green-bg);color:#14532d}
+input:disabled,select:disabled,textarea:disabled{background:#f6f7f9;color:#4b5563}
+.btn.link.sm{font-size:12.5px;padding:2px 0}
+.btn.link{border:none;background:none;color:var(--primary);padding:6px 4px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.info{background:var(--primary-weak);border-radius:8px;padding:10px 14px;color:#24447a;font-size:13px}
+.warn{background:var(--orange-bg);border-radius:8px;padding:10px 14px;color:#7a4300;font-size:13px}
+.empty{text-align:center;color:var(--faint);padding:40px 0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tab{border:none;background:none;padding:8px 14px;color:var(--muted);border-bottom:2px solid transparent}
+.tab.on{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+/* review items */
+.ritem{display:flex;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+.ritem:last-child{border-bottom:none}
+.ritem .grow{flex:1}
+/* market */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.acard{border:1px solid var(--border);border-radius:12px;padding:16px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.page-h .ic,.acard .ic{width:38px;height:38px;border-radius:10px;background:var(--primary-weak);display:grid;place-items:center;color:var(--primary);font-weight:700}
+/* modal/drawer */
+.mask{position:fixed;inset:0;background:rgba(20,24,32,.42);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+.modal{background:#fff;border-radius:14px;width:min(560px,100%);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.2)}
+.modal.wide{width:min(920px,100%)}
+.m-h{padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
+.reject-box{margin-top:16px;border:1px solid #f0c4c0;background:#fff7f6;border-radius:10px;padding:12px 14px}
+.rb-h{font-weight:700;color:var(--red);margin-bottom:2px}
+.req{font-size:11.5px;font-weight:600;color:#fff;background:var(--red);border-radius:4px;padding:0 5px;margin-left:4px;vertical-align:middle}
+.reject-box textarea{background:#fff}
+.reject-box .chip{background:#fff}
+.btn.danger-fill{background:var(--red);border-color:var(--red);color:#fff}
+.btn.danger-fill:hover{background:#ad2c22}
+.m-sub{font-size:13px;font-weight:400;color:var(--muted);margin-top:2px}
+.m-h .icon-btn{font-size:15px;flex:none}
+.m-b{padding:20px;overflow:auto;flex:1 1 auto;min-height:0}
+.m-h,.m-f{flex:none}
+.modal.scrolly .m-f{box-shadow:0 -8px 14px -10px rgba(0,0,0,.25)}
+.m-f{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;align-items:center}
+.drawer-mask{position:fixed;inset:0;background:rgba(20,24,32,.3);z-index:20;display:flex;justify-content:flex-end}
+.drawer{background:#fff;width:min(460px,100%);height:100%;overflow:auto;box-shadow:-10px 0 30px rgba(0,0,0,.12)}
+label.f{display:block;font-weight:600;margin:14px 0 6px}
+textarea,input[type=text],input[type=date],select.inp{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;outline:none}
+textarea:focus,input:focus,select.inp:focus{border-color:var(--primary)}
+.kv{display:grid;grid-template-columns:96px 1fr;gap:8px 12px;font-size:13.5px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.timeline{list-style:none;padding:0;margin:0}
+.timeline li{position:relative;padding:0 0 14px 22px}
+.timeline li:before{content:"";position:absolute;left:5px;top:6px;width:9px;height:9px;border-radius:50%;background:var(--primary)}
+.timeline li:after{content:"";position:absolute;left:9px;top:18px;bottom:0;width:1px;background:var(--border)}
+.timeline li:last-child:after{display:none}
+.timeline .t{color:var(--faint);font-size:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{border:1px solid var(--border);background:#fff;border-radius:99px;padding:3px 10px;font-size:12.5px}
+.chip:hover{border-color:var(--primary);color:var(--primary)}
+.two{display:grid;grid-template-columns:1.1fr 1fr;gap:20px}
+.chat{border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;height:300px}
+.chat .log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#fafbfd;border-radius:10px 10px 0 0}
+.msg{max-width:85%;padding:7px 11px;border-radius:10px;font-size:13px}
+.msg.u{align-self:flex-end;background:var(--primary);color:#fff}
+.msg.a{align-self:flex-start;background:#fff;border:1px solid var(--border)}
+.chat form{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border)}
+/* notifications */
+.npanel{position:absolute;top:92px;right:180px;width:360px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.14);z-index:15}
+.npanel .nh{padding:12px 16px;font-weight:700;border-bottom:1px solid var(--border)}
+.nitem{display:block;width:100%;text-align:left;border:none;background:#fff;padding:12px 16px;border-bottom:1px solid var(--border)}
+.nitem:hover{background:#fafbfd}
+.nitem.unread{background:#f5f9ff}
+.nitem .t{color:var(--faint);font-size:12px}
+/* guide & scenario */
+.guide{position:fixed;left:16px;bottom:16px;width:300px;background:rgba(31,42,68,.8);transition:background .15s;color:#e8edf7;border-radius:12px;padding:12px 14px;font-size:13px;z-index:10;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.guide.min{width:auto;padding:8px 12px}
+.g-h{display:flex;align-items:center;gap:8px}
+.g-prog{font-size:12px;opacity:.75}
+.g-x{border:none;background:rgba(255,255,255,.12);color:#fff;border-radius:6px;padding:2px 8px;font-size:12px;white-space:nowrap;flex:none}
+.g-bar{height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:8px 0 10px;overflow:hidden}
+.g-bar i{display:block;height:100%;background:#ffb020}
+.g-ch{font-size:12px;color:#b9c6e0}
+.g-t{font-weight:700;font-size:14px;margin:2px 0 4px;color:#fff}
+.g-d{line-height:1.6}
+.g-a{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+.name-link{border:none;background:none;padding:0;font-weight:600;color:var(--text);text-align:left;cursor:pointer}
+.name-link:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+tr.row:hover .name-link{color:var(--primary)}
+.agent-h{margin-bottom:12px}
+.agent-h .ic{width:32px;height:32px;border-radius:8px;font-size:14px}
+.agent-h h1{font-size:19px}
+.agent-h .sub{margin:2px 0 0}
+.id-line{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.copy{border:none;background:none;color:var(--faint);cursor:pointer;padding:0 4px;font-size:13px;border-radius:4px}
+.copy:hover{color:var(--primary);background:var(--primary-weak)}
+.back{border:none;background:none;font-size:22px;line-height:1;color:var(--muted);padding:2px 6px;border-radius:6px;cursor:pointer}
+.back:hover{background:var(--gray-bg);color:var(--text)}
+.locked input:disabled,.locked select:disabled,.locked textarea:disabled{pointer-events:none}
+.locked section{cursor:not-allowed}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(232,163,61,.55)}100%{box-shadow:0 0 0 10px rgba(232,163,61,0)}}
+.banner.pulse,.btn.pulse{animation:pulse .9s ease-out 2}
+.banner-row{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.banner.tight{padding:8px 12px;margin-bottom:12px}
+.opt{font-size:12px;font-weight:400;color:var(--faint);margin-left:4px}
+.dirty-bar{position:sticky;bottom:0;display:flex;align-items:center;gap:8px;margin:16px -20px -20px;padding:10px 20px;background:#fff8e6;border-top:1px solid #f0d49a;border-radius:0 0 12px 12px;color:#7a4300;font-weight:600;font-size:13.5px;z-index:2}
+.dirty-bar[hidden],.dirty-note[hidden]{display:none}
+.dirty-note{background:#fff8e6;color:#7a4300;font-size:12.5px;padding:6px 14px;border-bottom:1px solid #f0d49a}
+.prompt-box{white-space:pre-wrap;background:#f6f7f9;border:1px solid var(--border);border-radius:8px;padding:8px 10px;max-height:120px;overflow:auto;font-size:13px}
+.banner{border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13.5px}
+.banner.info{background:var(--primary-weak);color:#24447a}
+.banner.warn{background:var(--orange-bg);color:#7a4300}
+.banner.bad{background:var(--red-bg);color:#8a2219}
+.banner.good{background:var(--green-bg);color:#14532d}
+input:disabled,select:disabled,textarea:disabled{background:#f6f7f9;color:#4b5563}
+.btn.link.sm{font-size:12.5px;padding:2px 0}
+.g-a .btn.link{color:#9cc3ff}
+.warn-row{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.btn.sm-btn{flex:none;padding:4px 12px;font-size:13px;border-color:#e2b46b;color:#7a4300}
+.btn.sm-btn:hover{background:#f6dcae;border-color:#c98a2a;color:#5c3200}
+.g-ok{color:#9cc3ff;font-size:12.5px}
+.g-list{margin-top:10px;font-size:12.5px}
+.g-list summary{cursor:pointer;opacity:.8}
+.g-li{padding:3px 0;opacity:.7}
+.g-li.cur{opacity:1;color:#fff;font-weight:600}
+.guide .g-h b{color:#ffb020;white-space:nowrap}
+.g-prog{white-space:nowrap}
+.scen{position:fixed;top:0;left:0;right:0;height:40px;background:#1f2a44;color:#e8edf7;z-index:12;display:flex;gap:10px;align-items:center;padding:0 16px;font-size:13px;white-space:nowrap;overflow-x:auto}
+.scen .sub{color:#b9c3d6}
+.scen .btn{padding:3px 10px;font-size:12.5px;background:transparent;color:#e8edf7;border-color:rgba(255,255,255,.25)}
+.scen .btn:hover{border-color:rgba(255,255,255,.5)}
+.scen select.inp{padding:3px 6px;font-size:12.5px;background:#fff}
+.scen .proto-tag{background:rgba(255,255,255,.12);color:#fff}
+.float{position:fixed;right:16px;bottom:16px;width:360px;height:470px;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.18);z-index:18;display:flex;flex-direction:column;overflow:hidden}
+.float.min{height:auto}
+.f-h{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.float.min .f-h{border-bottom:none}
+.ic.sm{width:32px;height:32px;border-radius:8px;background:var(--primary-weak);display:grid;place-items:center;color:var(--primary);font-weight:700;flex:none}
+.icon-btn{border:none;background:none;width:28px;height:28px;border-radius:6px;color:var(--muted)}
+.icon-btn:hover{background:var(--gray-bg)}
+.float .log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#fafbfd}
+.f-in{display:flex;gap:6px;padding:10px;border-top:1px solid var(--border)}
+.f-in input{flex:1;border:1px solid var(--border);border-radius:8px;padding:7px 10px;outline:none}
+.toast{position:fixed;top:108px;left:50%;transform:translateX(-50%);background:#1f2329;color:#fff;padding:8px 16px;border-radius:8px;z-index:40;font-size:13px}
+/* doc */
+.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
+.step{flex:1;min-width:120px;border:1px solid var(--border);border-radius:10px;padding:10px;background:#fff;text-align:center}
+.step b{display:block}
+.arrow{align-self:center;color:var(--faint)}
+.doc h2{font-size:17px;margin:0 0 10px}
+.doc h3{font-size:15px;margin:18px 0 8px}
+.doc ol,.doc ul{margin:0;padding-left:20px}
+.doc li{margin-bottom:8px}
+.doc table td,.doc table th{font-size:13px}
+.switch{position:relative;width:40px;height:22px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;background:#cfd4dc;border-radius:11px;transition:.2s}
+.switch span:before{content:"";position:absolute;width:18px;height:18px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked+span{background:var(--primary)}
+.switch input:checked+span:before{transform:translateX(18px)}
+.row-flex{display:flex;align-items:center;gap:12px}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;grid-template-rows:56px auto 1fr}
+  .top{grid-column:1}
+  .side{display:flex;gap:4px;overflow-x:auto;padding:8px 12px;border-right:none;border-bottom:1px solid var(--border)}
+  .side .org,.side .nav-sep,.side .nav-group{display:none}
+  .nav.sub{padding-left:12px}
+  .nav{width:auto;white-space:nowrap;padding:7px 12px}
+  .main{padding:16px 16px 32px}
+  .page-h{flex-wrap:wrap}
+  td,th{padding:10px 8px}
+  .two{grid-template-columns:1fr}
+  .logo{width:auto}
+  .crumb,.tl,.u-txt{display:none}
+  .create{grid-template-columns:1fr}.c-side{display:none}
+  .acct{grid-template-columns:1fr}.acct-side{display:none}
+  .agent-grid{grid-template-columns:1fr}.test-panel{min-height:420px;position:static;height:auto}
+  .fgrid{grid-template-columns:1fr}
+  .scen{padding:0 8px}
+  .float{left:8px;right:8px;width:auto;bottom:120px;height:60vh}
+  .npanel{right:8px;width:calc(100vw - 16px)}
+  .guide{display:none}
+}
+.help{position:relative;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--faint);color:var(--faint);font-size:10px;font-weight:600;margin-left:4px;cursor:help;vertical-align:1px;pointer-events:auto}
+.help:hover,.help:focus{border-color:var(--primary);color:var(--primary);outline:none}
+.help-tip{display:none;position:absolute;left:50%;top:calc(100% + 6px);transform:translateX(-30%);width:280px;padding:10px 12px;background:#1f2937;color:#fff;border-radius:8px;font-size:12px;font-weight:400;line-height:1.7;text-align:left;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.18);white-space:normal;cursor:default}
+.help-tip b{color:#fff;font-weight:600}
+.help:hover .help-tip,.help:focus .help-tip{display:block}
+.kbp{position:relative}
+.kb-trigger{border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:8px;width:100%;min-height:38px;padding:4px 10px 4px 6px!important;background:#fff;cursor:pointer;color:var(--text)}
+.kb-trigger:focus{border-color:var(--primary);outline:none}
+.kb-trigger.disabled{background:#f6f7f9;color:var(--muted);cursor:not-allowed}
+.locked .kb-trigger.disabled{pointer-events:none}
+.kb-val{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.kb-val .ph{color:var(--faint);padding-left:4px}
+.kb-tag{display:inline-flex;align-items:center;gap:2px;background:#eef2ff;color:var(--primary);border-radius:6px;padding:2px 4px 2px 8px;font-size:13px;line-height:20px}
+.kb-tag .x{border:0;background:none;color:inherit;cursor:pointer;padding:0 4px;font-size:11px;opacity:.6;border-radius:4px}
+.kb-tag .x:hover{opacity:1;background:rgba(0,0,0,.06)}
+.disabled .kb-tag{background:#eceef1;color:var(--muted);padding-right:8px}
+.kb-caret{color:var(--text);flex:none;transition:transform .15s}
+.kbp.open .kb-caret{transform:rotate(180deg)}
+.kb-trigger.disabled .kb-caret{color:var(--faint)}
+.kb-menu{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:4px;z-index:40}
+.kbp.open .kb-menu{display:block}
+.kbp.open .kb-trigger{border-color:var(--primary)}
+.kb-opt{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:14px}
+.kb-opt:hover{background:#f3f5f9}
+.kb-foot{border-top:1px solid var(--border);margin-top:4px;padding:8px 8px 4px;font-size:13px;color:var(--muted)}
+.kb-new{border:0;background:none;padding:0;color:var(--primary);cursor:pointer;font:inherit}
+.kb-new:hover{text-decoration:underline}
+.kb-opt input{width:15px;height:15px;margin:0;accent-color:var(--primary)}
+.f-tabs{display:flex;gap:4px;padding:6px 8px;border-bottom:1px solid var(--border);background:#f6f7f9;overflow-x:auto}
+.f-tab{display:flex;align-items:center;min-width:0;max-width:140px;border-radius:7px;color:var(--muted)}
+.f-tab.on{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.f-tab-b{display:flex;align-items:center;gap:5px;min-width:0;border:0;background:none;padding:4px 2px 4px 6px;font-size:12.5px;color:inherit;cursor:pointer}
+.f-tab-n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f-tab-x{border:0;background:none;color:var(--faint);font-size:10px;padding:4px 6px;cursor:pointer;border-radius:5px}
+.f-tab-x:hover{color:var(--text);background:rgba(0,0,0,.06)}
+.ic.xs{width:18px;height:18px;font-size:10px;border-radius:5px;flex:none;background:var(--primary-weak);display:grid;place-items:center;color:var(--primary);font-weight:700}
+.handover summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+.handover summary::-webkit-details-marker{display:none}
+.hv-more{color:var(--primary);font-size:13px}
+.handover[open] .hv-more{display:none}
+.handover ul{margin:8px 0 0;padding-left:18px;line-height:1.8}
+.agent-top{position:sticky;top:-24px;z-index:6;background:var(--bg);margin-top:-24px;padding-top:24px}
+.agent-top.stuck{box-shadow:0 1px 0 var(--border)}
+.guide:hover,.guide:focus-within{background:rgba(31,42,68,.97)}
+.g-nav{border:none;background:rgba(255,255,255,.12);color:#fff;border-radius:6px;width:24px;height:22px;line-height:1;font-size:15px;cursor:pointer;padding:0}
+.g-nav:hover:not(:disabled){background:rgba(255,255,255,.25)}
+.g-nav:disabled{opacity:.3;cursor:default}
+.g-tag{margin-left:6px;font-size:11px;background:rgba(255,255,255,.14);color:#dfe8ff;border-radius:4px;padding:1px 6px}
+button.g-li{display:block;width:100%;text-align:left;border:none;background:none;color:inherit;font:inherit;cursor:pointer;border-radius:4px;padding:3px 4px}
+button.g-li:hover{opacity:1;background:rgba(255,255,255,.08)}
+.g-li.cur{opacity:1;color:#fff;font-weight:600}
+.g-note{color:#b9c6e0;font-size:12px;line-height:1.6;margin-top:6px}
+.g-done{margin-top:10px;color:#8be0a8;font-weight:600;font-size:12.5px}
+.g-warn{color:#ffcf7a;font-size:12.5px}
+.g-nav.go{background:#ffb020;color:#1f2a44;font-weight:700;animation:gpulse 1.2s ease-out infinite}
+.g-target{animation:gpulse 1.2s ease-out infinite;position:relative;z-index:2}
+@keyframes gpulse{0%{box-shadow:0 0 0 0 rgba(255,176,32,.75)}100%{box-shadow:0 0 0 9px rgba(255,176,32,0)}}
+.flow-svg{width:100%;height:auto;display:block;margin:4px 0 0;font-family:inherit}
+.fl-box{fill:#fff;stroke:var(--border);stroke-width:1.2}
+.fl-note{fill:#f8f9fb;stroke-dasharray:4 3}
+.fl-t{font-size:16px;font-weight:700;text-anchor:middle}
+.fl-s{font-size:13px;fill:var(--muted);text-anchor:middle}
+.fl-a{stroke:var(--muted);stroke-width:1.6;fill:none}
+.fl-dash{stroke-dasharray:5 4}
+.fl-left{text-anchor:start}
+.fl-l{font-size:12.5px;fill:var(--text);font-weight:600;text-anchor:middle}
+.tldr{margin:0;padding-left:20px;line-height:1.8}
+.tldr li{margin:2px 0}
+.g-target{outline:3px solid #ffb020;outline-offset:3px;border-radius:8px}
+.g-bump{animation:gbump .45s ease-in-out 2}
+@keyframes gbump{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.g-tip{position:fixed;z-index:60;background:#fff7e0;color:#5c3d00;border:2px solid #ffb020;font-size:12.5px;font-weight:700;padding:5px 11px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.2);pointer-events:none;white-space:nowrap}
+.g-tip::after{content:'';position:absolute;left:calc(var(--ax) - 7px);top:calc(100% + 2px);border:7px solid transparent;border-top-color:#ffb020}
+.g-tip.below::after{top:auto;bottom:calc(100% + 2px);border-top-color:transparent;border-bottom-color:#ffb020}
+@keyframes gfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.role-cue{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.28);animation:rcIn .18s ease-out;cursor:pointer}
+.role-cue.out{opacity:0;transition:opacity .3s}
+.rc-card{display:flex;align-items:center;gap:16px;background:#1f2a44;color:#fff;border:2px solid #ffb020;border-radius:16px;padding:18px 26px;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:rcPop .25s ease-out}
+.rc-av{width:52px!important;height:52px!important;font-size:22px;flex:none}
+.rc-k{font-size:12px;color:#ffb020;font-weight:700;letter-spacing:.08em}
+.rc-n{font-size:22px;font-weight:700;margin:2px 0}
+.rc-n span{font-size:15px;font-weight:600;color:#b9c6e0}
+.rc-d{font-size:13px;color:#b9c6e0}
+@keyframes rcIn{from{opacity:0}to{opacity:1}}
+@keyframes rcPop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.g-flash{animation:gflash 1s ease-out}
+@keyframes gflash{0%{box-shadow:0 0 0 0 rgba(255,176,32,.9)}100%{box-shadow:0 0 0 14px rgba(255,176,32,0)}}
+.welcome{width:min(520px,100%)}
+.welcome .m-b{padding:26px 28px 20px}
+.welcome h2{margin:2px 0 0;font-size:22px}
+.wl-k{font-size:12px;font-weight:700;color:#c47f00;letter-spacing:.06em}
+.wl-list{margin:0;padding-left:20px;line-height:1.7}
+.wl-list li{margin:4px 0}
+.wl-list b{display:inline-block;min-width:150px}
+.wl-list span{color:var(--muted);font-size:13px}
+.muted-tab{color:var(--faint)!important}
+.g-point{outline:3px dashed #ffb020;outline-offset:4px;border-radius:12px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const PEOPLE = {
+  member:   {name:'陳小美', role:'組員', color:'#2f7de1'},
+  manager:  {name:'林經理', role:'主管', color:'#e07b1f'},
+  deputy:   {name:'王副理', role:'副理', color:'#7b5bd6'},
+  lead:     {name:'劉組長', role:'組長', color:'#2f8f6f'},
+  colleague:{name:'張大明', role:'組員', color:'#1f9d63'},
+  owner:    {name:'周文華',  role:'系統管理員', color:'#5b6475'},
+  other:    {name:'黃品妤', role:'組員', color:'#c2417a'},
+  pmMgr:    {name:'周課長', role:'主管', color:'#8a6d3b'},
+};
+const DEPT_OF = {member:'業務一部',manager:'業務一部',deputy:'業務一部',lead:'業務一部',colleague:'業務一部',owner:'資訊部',other:'生產管理部',pmMgr:'生產管理部'};
+const WHO_GROUPS = [['業務一部',['manager','deputy','lead','member','colleague']],['生產管理部',['other']],['資訊部',['owner']]];
+const WHO_LABEL = {manager:'主管',deputy:'副理',member:'組員',colleague:'組員',other:'組員・其他部門',owner:'系統管理員',lead:'組長'};
+const DEPT = {name:'業務一部', manager:'manager', size:8};
+// 側邊欄沿用平台的結構與命名，只列出這條流程用得到的項目。
+// 平台本來就會依角色權限隱藏選單：業務一部角色只勾「AI 助理權限」與「Agent 市集權限」，組員看到的就是這幾項。
+const SIDE = [
+  {v:'market'},
+  {g:'AI 功能',items:[{v:'agents'},{v:'review',isNew:true}]},
+  {g:'組織設定',ownerOnly:true,items:[{v:'roles'}]},
+];
+const HOME = {other:'market',member:'agents',deputy:'agents',colleague:'market',manager:'review',owner:'review'};
+const LABEL = {review:'AI 助理審核', agents:'AI 助理', market:'Agent 市集', leave:'排休與代理', roles:'組織概覽', doc:'設計說明'};
+function crumb(){
+  if(S.view==='agent'){const a=byId(S.agentId);return 'AI 功能 / AI 助理 / '+(a?a.name:'')}
+  if(S.view==='roles')return UI.role?'組織設定 / 組織概覽 / 角色權限 / 編輯角色（業務一部）':'組織設定 / 組織概覽 / 角色權限';
+  return {market:'Agent 市集',agents:'AI 功能 / AI 助理',review:'AI 功能 / AI 助理審核',leave:'帳號 / 排休與代理',doc:'原型說明 / 設計說明'}[S.view];
+}
+// 依身分決定看得到哪些頁面（平台會隱藏沒有權限的選單）
+function allowed(v){
+  if(v==='review')return S.me==='manager'||S.me==='owner'||myQueue().length>0||(activeLeave()&&activeLeave().delegate===S.me)||S.agents.some(a=>(a.rv||[]).some(x=>x.by===S.me));
+  if(v==='roles')return S.me==='owner';
+  if(v==='agent'){const a=byId(S.agentId);return !!a&&(a.owner===S.me||S.me==='owner')}
+  if(v==='leave')return S.me==='manager';
+  return true;
+}
+const ROLES = [
+  {name:'擁有者',tag:'組織擁有者',perm:'—',members:'周文華'},
+  {name:'預設角色',tag:'預設角色',perm:'Agent 市集權限',members:'全部（系統自動指派）'},
+  {name:'業務一部',perm:'AI 助理權限、Agent 市集權限',members:'林經理（主管）、王副理、劉組長、陳小美 +4',edit:true},
+  {name:'業務二部',perm:'AI 助理權限、Agent 市集權限',members:'7 位'},
+  {name:'生產管理部',perm:'AI 助理權限、Agent 市集權限',members:'周課長（主管）、黃品妤 +7'},
+  {name:'品質保證部',perm:'AI 助理權限、Agent 市集權限',members:'6 位'},
+  {name:'採購部',perm:'Agent 市集權限',members:'5 位'},
+  {name:'資訊部',perm:'AI 功能權限、AgentOps 權限',members:'3 位'},
+];
+const SYS_NOTES = [
+  ['【公告】免費方案資源調整，付費方案不受影響','4 個月前'],
+  ['【新功能】Agent UI 上線：AI 助理改用視覺卡片回覆','5 個月前'],
+  ['【公告】Credits 計費制度即將全面上線','5 個月前'],
+];
+const STATUS = {
+  draft:   ['草稿','b-draft'],
+  pending: ['審核中','b-pending'],
+  rejected:['已退回','b-rejected'],
+  approved:['已上架','b-approved'],
+};
+/* ---------- 示範情境：上方選情境（會自動準備好資料），導覽面板用 ‹ › 逐步說明，要按的按鈕會發光 ---------- */
+const myAgents=()=>S.agents.filter(a=>a.owner==='member').sort((x,y)=>x.id-y.id);
+const agentA=()=>myAgents()[0], memberAgent=()=>myAgents()[1];
+// 情境①建立時預先帶入的內容（展示用，省去打字）
+const DEMO_A={q:'客戶抱怨交期延誤三天，幫我草擬一封回覆信',name:'客訴回覆助理',desc:'依客訴內容與處理規範，草擬給客戶的回覆信。',kb:['客訴處理 SOP','常見問題'],prompt:'你是客訴回覆助理，依客訴處理 SOP 草擬回覆信。\n語氣客氣，開頭先致歉；不可承諾賠償金額或新的交期，需要時請客戶等候業務聯繫。'};
+const DEMO_B={name:'交期查詢助理',desc:'輸入訂單號碼，回覆目前生產進度與預計交期。',kb:['生產排程表'],prompt:'依生產排程表回覆訂單的生產進度與預計交期。若排程超過三天未更新，提醒對方以業務確認為準。'};
+const DEMO_C={name:'庫存查詢助理',desc:'輸入料號，回覆目前庫存與可出貨數量。',kb:['生產排程表','產品價目表'],prompt:'依庫存與排程資料回覆料號的庫存與可出貨數量；資料超過一天未更新時，提醒對方以倉管確認為準。'};
+const DEMO_D={name:'樣品申請助理',desc:'協助業務整理客戶的樣品申請內容與出貨方式。',kb:['出貨與物流 SOP'],prompt:'依出貨與物流 SOP 整理樣品申請：品項、數量、寄送地址與希望到貨日；缺少資訊時列出需要補的欄位。'};
+const agOf=d=>S.agents.find(a=>a.owner==='member'&&a.name===d.name);
+const prep=d=>{demoCreate(d);const a=agOf(d);a.tests=3;return a};
+const demoCreate=d=>asWho('member',()=>{A.create(d.name,d.desc,'GPT-5.6 Luna',d.kb.join('、'),d.prompt,MODES[0])});
+const editedAfterReject=a=>{if(!a)return false;const h=a.history;const i=h.map(x=>x.text).findLastIndex(t=>t.includes('退回：'));return i>=0&&h.slice(i+1).some(x=>x.text.includes('修改設定'))};
+const prefillTest=()=>!S.tour.min&&S.tour.sc==='A'&&S.tour.k===1&&!!agentA()&&S.agentId===agentA().id&&!agentA().tests;
+const prefillCreate=()=>!S.tour.min&&S.tour.sc==='A'&&(S.tour.k||0)===0&&!agentA();
+const asWho=(who,fn)=>{const me=S.me;S.me=who;try{fn()}finally{S.me=me}};
+const whoOf=st=>typeof st.who==='function'?st.who():st.who;
+const SCEN=[
+ {id:'A',name:'① 建立到上架',desc:'組員建立並送審 → 主管核准 → 同事使用',setup:()=>{},steps:[
+   {who:'member',view:'agents',allow:['openCreate','doCreate'],t:'組員建立 AI 助理',d:'按右上角「＋ 建立 AI 助理」，欄位已預先填好，直接按「建立草稿」。',note:'建立後是草稿，只有自己看得到；建立和送審分開，先測試再送出。',target:['.modal [data-act="doCreate"]','[data-act="openCreate"]'],done:()=>!!agentA(),auto:()=>demoCreate(DEMO_A)},
+   {who:'member',view:'agent',agent:()=>agentA()&&agentA().id,allow:['openSubmit','doSubmit','saveAgent','testFirst'],t:'測試後送出審核',d:'先在右側「測試對話」按「送出」問一題（問題已填好），再按右上角「送出審核」。',note:'送出視窗會寫出審核人、審核時限、核准後誰看得到；送出後設定會鎖定。',gate:()=>!!(agentA()&&agentA().tests),gateMsg:'先在右側「測試對話」問一題，確認回答沒問題再送出',target:()=>agentA()&&agentA().tests?['.modal [data-act="doSubmit"]','[data-act="openSubmit"]']:['form[data-act="tchat"] button'],done:()=>!!agentA()&&agentA().status!=='draft',auto:()=>A.submit(agentA().id,'')},
+   {who:'manager',view:'review',allow:['doApprove'],point:{sel:'[data-act="bell"]',tip:'送出時主管會收到通知'},t:'主管測試後核准',d:'按「開始審核」，看完內容（也可以在右側試問）後按「核准並上架」。',note:'審核視窗看得到用途、角色指令、知識庫和組員測試了幾次。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!agentA()&&agentA().status==='approved',auto:()=>asWho('manager',()=>A.approve(agentA().id))},
+   {who:'colleague',view:'market',allow:['chatOpen'],point:{sel:'[data-act="bell"]',tip:'核准後同事會收到上架通知'},t:'同事在市集看到並使用',d:'張大明收到上架通知。在「組織自建」找到「客訴回覆助理」，按「開始對話」。',note:'剛上架的會標示「新上架」；對話視窗可以同時開好幾個 AI 助理，用分頁切換。',target:['[data-act="chatOpen"]'],done:()=>!!S.tour.chatted,auto:()=>{S.tour.chatted=true}},
+   {who:'other',view:'market',point:{sel:'.acard[data-aid="9"]',tip:'這裡只有生產管理部的 AI 助理'},t:'其他部門看不到',d:'這是生產管理部黃品妤的 Agent 市集，看一下就好，不用操作。',note:'剛上架的「客訴回覆助理」屬於業務一部，所以不在這裡；她只看得到自己部門核准的 AI 助理。',done:()=>true},
+ ]},
+ {id:'B',name:'② 退回與重送',desc:'主管退回 → 組員依原因修改 → 重新送出後核准',setup:()=>{SCEN[0].steps.forEach(x=>x.auto&&x.auto());prep(DEMO_B)},steps:[
+   {who:'member',view:'agent',agent:()=>agOf(DEMO_B)&&agOf(DEMO_B).id,allow:['openSubmit','doSubmit','saveAgent','testFirst'],t:'組員送出另一個 AI 助理',d:'「交期查詢助理」已經測試過了，直接按右上角「送出審核」。',note:'這次要示範主管退回後，組員怎麼修改再送。',target:['.modal [data-act="doSubmit"]','[data-act="openSubmit"]'],done:()=>!!agOf(DEMO_B)&&agOf(DEMO_B).status!=='draft',auto:()=>A.submit(agOf(DEMO_B).id,'')},
+   {who:'manager',view:'review',allow:['startReject','doReject'],t:'主管退回，並寫出原因',d:'按「開始審核」→「退回」，點一個常用原因，再按「確認退回」。',note:'退回一定要填原因，組員才知道要改什麼；常用原因可以一鍵帶入。',target:()=>{const r=document.getElementById('rej-reason');return r?[r.value.trim()?'.modal [data-act="doReject"]':'.modal [data-act="chip"]']:['.modal [data-act="startReject"]','[data-act="openReview"]']},done:()=>{const a=agOf(DEMO_B);return !!a&&a.history.some(h=>h.text.includes('退回：'))},auto:()=>asWho('manager',()=>A.reject(agOf(DEMO_B).id,'回答內容需要再確認'))},
+   {who:'member',view:'agents',allow:['saveAgent','openSubmit','doSubmit','testFirst'],point:{sel:'[data-act="bell"]',tip:'退回時組員會收到通知'},t:'組員依原因修改後重新送出',d:'列表顯示「已退回」和原因。按「修改」進入，改一下「角色指令」，按「儲存變更」，再按右上角「重新送出」。',note:'退回原因同時出現在列表、狀態列和通知；沒修改就不能重新送出。',gate:()=>editedAfterReject(agOf(DEMO_B)),gateMsg:'請先依退回原因修改設定，並按「儲存變更」',target:()=>S.view==='agents'?[`[data-act="openAgent"][data-id="${agOf(DEMO_B)&&agOf(DEMO_B).id}"]`]:editedAfterReject(agOf(DEMO_B))?['.modal [data-act="doSubmit"]','[data-act="openSubmit"]']:['#ed-prompt'],done:()=>{const a=agOf(DEMO_B);return !!a&&(a.status==='pending'||a.status==='approved')&&a.history.some(h=>h.text.includes('修改設定'))},auto:()=>asWho('member',()=>{const a=agOf(DEMO_B);A.saveAgent(a.id,a.name,a.desc,a.kb,a.prompt+'\n查不到訂單時，請對方提供正確的訂單號碼。',a.mode);A.submit(a.id,'')})},
+   {who:'manager',view:'review',allow:['doApprove'],t:'主管再審，核准上架',d:'按「開始審核」→「核准並上架」。',note:'審核紀錄會保留「退回 → 修改 → 重新送出」的完整經過。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!agOf(DEMO_B)&&agOf(DEMO_B).status==='approved',auto:()=>asWho('manager',()=>A.approve(agOf(DEMO_B).id))},
+ ]},
+ {id:'C',name:'③ 主管請假',desc:'主管排休 → 送出的審核自動轉給代理人',setup:()=>{SCEN[1].setup();SCEN[1].steps.forEach(x=>x.auto&&x.auto());prep(DEMO_C)},steps:[
+   {who:'manager',view:'leave',allow:['openLeave','doLeave'],t:'主管排休並指定代理人',d:'右上角頭像 › 帳號 › 排休與代理。按「新增排休」，代理人維持王副理，按「儲存」。',note:'代理人只能是部門管理職；儲存後頁面會列出交接事項。',target:['.modal [data-act="doLeave"]','[data-act="openLeave"]'],done:()=>!!activeLeave(),auto:()=>A.setLeave(isoDay(),isoDay(6),'deputy')},
+   {who:'member',view:'agent',agent:()=>agOf(DEMO_C)&&agOf(DEMO_C).id,allow:['openSubmit','doSubmit','saveAgent','testFirst'],t:'組員照常送出',d:'「庫存查詢助理」已經測試過了，按右上角「送出審核」。',note:'組員不用知道主管請假：送出視窗的審核人會自動變成代理人王副理。',target:['.modal [data-act="doSubmit"]','[data-act="openSubmit"]'],done:()=>!!agOf(DEMO_C)&&agOf(DEMO_C).status!=='draft',auto:()=>A.submit(agOf(DEMO_C).id,'')},
+   {who:()=>(S.leave&&S.leave.delegate)||'deputy',view:'review',allow:['doApprove'],t:'代理人審核',d:'按「開始審核」→「核准並上架」。',note:'項目標示「代理林經理」，審核紀錄也會寫明是代理。排休結束後，代理權限自動收回。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!agOf(DEMO_C)&&agOf(DEMO_C).status==='approved',auto:()=>{const a=agOf(DEMO_C);asWho(reviewerOf(a).id,()=>A.approve(a.id))}},
+ ]},
+ {id:'D',name:'④ 逾期改派',desc:'主管沒空沒處理 → 第 2 天提醒 → 第 4 天預告 → 第 5 天改派',setup:()=>{SCEN[2].setup();SCEN[2].steps.forEach(x=>x.auto&&x.auto());A.endLeave();prep(DEMO_D)},steps:[
+   {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,allow:['openSubmit','doSubmit','saveAgent','testFirst'],t:'組員送出審核',d:'「樣品申請助理」已經測試過了，按右上角「送出審核」。',note:'送出視窗寫著審核時限：5 個工作天。林經理這次在，但一直沒空處理。',target:['.modal [data-act="doSubmit"]','[data-act="openSubmit"]'],done:()=>!!agOf(DEMO_D)&&agOf(DEMO_D).status!=='draft',auto:()=>A.submit(agOf(DEMO_D).id,'')},
+   {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,allow:['ff'],t:'時間一天天過去',d:'按上方黑色列的「快轉到下一個時間點」，共三次，每次看一下狀態列的變化。',note:'第 2 天提醒林經理；第 4 天預告明天逾期（林經理和陳小美都收到）；第 5 天改派給王副理。',target:['[data-act="ff"]'],done:()=>!!(agOf(DEMO_D)&&agOf(DEMO_D).expired),auto:()=>{for(let i=0;i<3&&!agOf(DEMO_D).expired;i++)A.fastForward()}},
+   {who:'deputy',view:'review',allow:['doApprove'],t:'王副理處理改派的審核',d:'按「開始審核」→「核准並上架」。',note:'項目註明「逾期改派，原審核人林經理」。補充：林經理不用等逾期，在審核視窗左下角按「轉交審核」也能交出去。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!(agOf(DEMO_D)&&agOf(DEMO_D).status==='approved'),auto:()=>asWho('deputy',()=>A.approve(agOf(DEMO_D).id))},
+   {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,point:{sel:'.tab-pane.on .timeline',tip:'誰、什麼時候、是否代理，都有紀錄'},t:'回頭看審核紀錄',d:'回到陳小美的「樣品申請助理」，點「審核紀錄」分頁。',note:'送出 → 林經理逾期未審、系統改派 → 王副理（代理林經理）核准，每一步都寫清楚是誰、是否代理，組員不用私下去問。',target:['[data-act="atab"][data-v="history"]'],done:()=>!!S.tour.sawHistory,auto:()=>{S.tour.sawHistory=true}},
+ ]},
+ {id:'E',name:'⑤ 平台角色綁定',desc:'核准後自動分配給部門角色',setup:()=>{SCEN[3].setup();SCEN[3].steps.forEach(x=>x.auto&&x.auto())},steps:[
+   {who:'owner',view:'roles',allow:['roleOpen'],t:'查看核准後的自動綁定',d:'在組織概覽點業務一部的「編輯」，會直接打開「分配 AI 助理」分頁。',note:'前面核准的四個 AI 助理（客訴回覆、交期查詢、庫存查詢、樣品申請）都自動分配給業務一部角色，只開讀取，並標示核准人或代理人。',target:['[data-act="roleOpen"]'],done:()=>!!S.tour.sawRoles},
+ ]},
+];
+let SILENT=false;
+// 示範時只允許目前這一步的動作；其他會改變流程的按鈕先擋下來，並提示要按哪裡
+const GUARDED=['doApprove','startReject','doReject','openHandoff','handoff','withdraw','openSubmit','doSubmit','openLeave','doLeave','endLeave','openCreate','doCreate','saveAgent','discardEdit','ff','chatOpen','roleOpen','testFirst'];
+function tourBlocks(act){
+  if(S.tour.min||!S.tour.started||S.tour.finished)return false;const st=curScen().steps[S.tour.k||0];if(!st||st.done())return false;
+  if(act==='openSubmit'&&isDirty())return true;
+  if(act==='openSubmit'&&st.gate&&!st.gate()){UI._gateMsg=st.gateMsg;return true}
+  return GUARDED.includes(act)&&!(st.allow||[]).includes(act);
+}
+function nudge(msg){toast(msg||(isDirty()?'有未儲存的變更，請先按「儲存變更」':'示範中：請先按標示的按鈕'));markTarget();const t=document.querySelector('.g-target');if(t){t.classList.remove('g-bump');void t.offsetWidth;t.classList.add('g-bump')}}
+const curScen=()=>SCEN.find(x=>x.id===S.tour.sc)||SCEN[0];
+function startScenario(id){
+  const min=S.tour&&S.tour.min;
+  SILENT=true;try{S=seed();S.tour={sc:id,k:0,min:!!min,started:true};(SCEN.find(x=>x.id===id)||SCEN[0]).setup();S.notes.forEach(n=>n.read=false)}finally{SILENT=false}
+  UI.float=null;UI.tchat=null;UI.edit=null;goStep(0);UI._forceCue=true;
+}
+function goStep(k){
+  const sc=curScen();k=Math.max(0,Math.min(sc.steps.length-1,k));S.tour.k=k;const st=sc.steps[k];
+  const prevMe=S.me;S.me=whoOf(st);S.view=st.view;if(S.me!==prevMe){UI.float=null;UI.tchat=null;UI.edit=null}if(st.agent){const id=st.agent();if(id)S.agentId=id;else S.view='agents'}
+  UI.modal=null;UI.drawer=null;UI.notif=false;UI.umenu=false;UI.rtab='todo';UI.atab='settings';UI.role=false;UI.filter='';UI.mtab='self';UI.rejecting=false;UI.chat=[];
+}
+function mWelcome(){
+  return `<div class="mask welcome-mask"><div class="modal welcome" role="dialog" aria-labelledby="wl-t">
+    <div class="m-b">
+      <div class="wl-k">MaiAgent 設計題・前端原型</div>
+      <h2 id="wl-t">AI 助理上架審核</h2>
+      <p class="sub" style="margin:4px 0 16px">從組員建立、送出審核，到部門同事在 Agent 市集看得到這個 AI 助理。</p>
+      <ol class="wl-list">${SCEN.map(x=>`<li><b>${x.name.slice(2)}</b><span>${x.desc}</span></li>`).join('')}</ol>
+      <div class="info" style="margin-top:14px">跟著左下角的導覽一步步操作，要按的地方會標示「按這裡」。上方黑色列可以隨時切換情境或身分。</div>
+    </div>
+    <div class="m-f"><button class="btn" data-act="tourFree">自由瀏覽</button><button class="btn primary" data-act="tourStart">開始展示</button></div>
+  </div></div>`;
+}
+function tourPanel(){
+  if(S.tour.finished){
+    const head=`<div class="g-h"><b>展示完成</b><span class="spacer"></span><button class="g-x" data-act="tourMin">${S.tour.min?'展開':'收合'}</button></div>`;
+    if(S.tour.min)return `<div class="guide min">${head}</div>`;
+    return `<div class="guide">${head}<div class="g-bar"><i style="width:100%"></i></div>
+      <div class="g-t">所有情境都看完了</div>
+      <div class="g-d">現在可以閱讀設計說明。想再看一次，可以重新開始，或用上方的「情境」跳到任一段。</div>
+      <div class="g-a"><button class="btn primary" data-act="reset">重新開始</button><button class="btn" data-act="tourFreeNow">自由瀏覽</button></div>
+    </div>`;
+  }
+  const sc=curScen(), n=sc.steps.length, k=Math.min(S.tour.k||0,n-1), st=sc.steps[k], who=whoOf(st), si=SCEN.indexOf(sc);
+  const done=st.done(), blocked=!done&&sc.steps.slice(0,k).some(p=>!p.done());
+  const head=`<div class="g-h"><b>${sc.name}</b><span class="g-prog">${k+1} / ${n}</span><span class="spacer"></span>${S.tour.min?'':`<button class="g-nav" data-act="tourPrev" ${k<=0?'disabled':''} aria-label="上一步">‹</button><button class="g-nav" data-act="tourNext" data-tip="下一步" ${k>=n-1?'disabled':''} aria-label="下一步">›</button>`}<button class="g-x" data-act="tourMin">${S.tour.min?'展開':'收合'}</button></div>`;
+  if(S.tour.min)return `<div class="guide min">${head}</div>`;
+  const next=SCEN[si+1];
+  const foot=done&&willAutoAdvance()?'':done
+    ?`<div class="g-done">✓ 完成</div>${k===n-1?(next?`<div class="g-a"><button class="btn primary" data-act="scenGo" data-tip="下一個情境" data-v="${next.id}">下一個情境：${next.name}</button></div>`:`<div class="g-a"><button class="btn primary" data-act="go" data-v="doc" data-finish="1" data-tip="看設計說明">全部看完，看設計說明</button></div>`):''}`
+    :blocked?`<div class="g-a"><span class="g-warn">前面的步驟還沒完成</span><button class="btn" data-act="tourAuto">幫我完成前面的步驟</button></div>`:'';
+  const flash=UI._flashGuide;UI._flashGuide=false;
+  return `<div class="guide ${flash?'g-flash':''}">${head}<div class="g-bar"><i style="width:${(k+(done?1:0))/n*100}%"></i></div>
+    <div class="g-ch">${P(who).name}（${WHO_LABEL[who]}）</div>
+    <div class="g-t">${st.t}</div>
+    <div class="g-d">${st.d}</div>
+    <div class="g-note">${st.note}</div>
+    ${foot}
+  </div>`;
+}
+// 把目前步驟要按的按鈕標成發光
+function putTip(id,t,text){
+  let tip=document.getElementById(id);
+  if(!t){if(tip)tip.remove();return}
+  if(!tip){tip=document.createElement('div');tip.id=id;tip.className='g-tip';document.body.appendChild(tip)}
+  tip.textContent=text;
+  const r=t.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;
+  const below=r.top<h+70;let x=Math.min(Math.max(8,r.left+r.width/2-w/2),innerWidth-w-8);
+  tip.style.left=x+'px';tip.style.top=(below?r.bottom+10:r.top-h-10)+'px';tip.classList.toggle('below',below);
+  tip.style.setProperty('--ax',(r.left+r.width/2-x)+'px');
+}
+function placeTip(){
+  const t=document.querySelector('.g-target');
+  const label=t?(t.dataset.tip||(t.tagName==='TEXTAREA'||t.tagName==='INPUT'?'':t.textContent)||t.getAttribute('aria-label')||'').trim().replace(/\s+/g,' ').slice(0,16):'';
+  putTip('g-tip',t,`按這裡${label?'：'+label:''}`);
+  const pt=document.querySelector('.g-point');putTip('g-tip2',pt,pt?pt.dataset.pointTip||'':'');
+}
+// 完成一步後，如果下一步還是同一個人，就直接接著顯示下一步（不用再按 ›）
+let advT;
+function willAutoAdvance(){
+  if(S.tour.min||!S.tour.started||S.tour.finished)return false;const sc=curScen(),k=S.tour.k||0,st=sc.steps[k],nx=sc.steps[k+1];
+  return !!(st&&nx&&st.done()&&whoOf(nx)===S.me&&whoOf(st)===S.me);
+}
+function autoAdvance(){
+  if(UI.modal||!willAutoAdvance())return;const k=S.tour.k||0;
+  clearTimeout(advT);advT=setTimeout(()=>{if((S.tour.k||0)!==k)return;goStep(k+1);UI._flashGuide=true;render()},350);
+}
+function markTarget(){
+  document.querySelectorAll('.g-target').forEach(x=>x.classList.remove('g-target'));
+  document.querySelectorAll('.g-point').forEach(x=>{x.classList.remove('g-point');delete x.dataset.pointTip});
+  {const st0=S.tour.started&&!S.tour.min&&!S.tour.finished&&curScen().steps[S.tour.k||0];if(st0&&st0.point){const pe=document.querySelector(st0.point.sel);if(pe){pe.classList.add('g-point');pe.dataset.pointTip=st0.point.tip}}}
+  if(S.tour.min||!S.tour.started||S.tour.finished){placeTip();return}const st=curScen().steps[S.tour.k||0];
+  // 這一步完成後，用同樣的「按這裡」提示指向導覽的下一步按鈕
+  if(st&&st.done()&&willAutoAdvance()){placeTip();return}
+  if(st&&st.done()){const nx=[...document.querySelectorAll('.guide [data-act="tourNext"]:not(:disabled),.guide [data-act="scenGo"],.guide [data-act="go"][data-v="doc"]')][0];if(nx)nx.classList.add('g-target');placeTip();return}
+  if(!st||!st.target){placeTip();return}
+  const sels=(st.allow||[]).includes('saveAgent')&&isDirty()&&document.querySelector('[data-act="saveAgent"]')?['[data-act="saveAgent"]']:(typeof st.target==='function'?st.target():st.target);
+  for(const sel of sels){const el=[...document.querySelectorAll(sel)].find(x=>x.offsetParent!==null);if(el){el.classList.add('g-target');break}}
+  placeTip();
+}
+
+let CLK=0;const tick=()=>Date.now()*1000+(CLK++%1000);
+function now(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`}
+function fmtDate(s){if(!s)return'';const [,m,d]=s.split('-');return `${+m}/${+d}`}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const P = id => PEOPLE[id];
+const myDept = () => DEPT_OF[S.me];
+const deptOf = a => a.dept||DEPT.name;
+function isoDay(off=0){const d=new Date();d.setDate(d.getDate()+off);const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`}
+function activeLeave(){const L=S.leave,t=isoDay();return L&&L.from<=t&&t<=L.to?L:null}
+function leaveState(L){const t=isoDay();return L.to<t?'ended':L.from>t?'scheduled':'active'}
+
+function seed(){
+  return {
+    me:'member', view:'agents',
+    leave:null, proxy:'deputy',
+    agents:[
+      {id:1,name:'報價單小幫手',desc:'依客戶與料號查詢歷史報價，草擬報價單。',prompt:'你是業務一部的報價助理。依客戶與料號查詢歷史報價，草擬報價單。價格只能引用知識庫裡的報價，不可自行估算折扣。',owner:'colleague',status:'approved',model:'GPT-5.6 Luna',kb:'歷史報價單、產品價目表',
+       submittedAt:'9/29 17:40',approvedAt:'9/30 10:12',reviewedBy:'manager',isNew:false,rv:[{by:'manager',res:'approved',t:'9/30 10:12'}],
+       history:[{t:'9/29 17:40',text:'張大明 送出審核'},{t:'9/30 10:12',text:'林經理 核准，已上架到業務一部'}]},
+      {id:9,name:'製程異常查詢助理',desc:'輸入機台編號，查詢近期異常紀錄與處理方式。',owner:'other',dept:'生產管理部',status:'approved',model:'GPT-5.6 Luna',kb:'機台保養紀錄',
+       approvedAt:'10/2 14:30',reviewedBy:'pmMgr',isNew:false,history:[{t:'10/2 14:30',text:'周課長 核准，已上架到生產管理部'}]},
+    ],
+    notes:[
+    ],
+    seq:4,
+    fav:{},
+    tour:{sc:'A',k:0,min:false},
+  };
+}
+let S;
+try{S=JSON.parse(localStorage.getItem('q2proto6'))}catch(e){}
+if(!S||!S.agents)S=seed();
+// 舊版資料相容：排休已改為必須指定代理人；舊的「轉系統管理員」狀態改用新的改派欄位
+if(S.leave&&!S.leave.delegate)S.leave.delegate='deputy';
+S.agents.forEach(a=>{if(!a.rv)a.rv=a.reviewedBy&&(a.status==='approved'||a.status==='rejected')?[{by:a.reviewedBy,res:a.status,acting:!!a.actingFor,t:a.approvedAt||''}]:[]});
+if(!S.tour||!S.tour.sc)S.tour={sc:'A',k:0,min:false};
+S.agents.forEach(a=>{if(a.escalated){a.escalated=false;if(a.status==='pending'&&!a.assignee){a.assignee='owner';a.assignWhy='逾期改派，原審核人林經理';a.expired=true;a.ev={remind:true,warn:true,expire:true}}}});
+const UI={modal:null,drawer:null,notif:false,umenu:false,ntab:'todo',rtab:'todo',chat:[],toast:null,role:false,filter:'',float:null,mtab:'self',mq:'',aq:'',favOnly:false,atab:'settings',sort:{key:'updated',dir:'desc'},sec:'sec-basic'};
+function save(){try{localStorage.setItem('q2proto6',JSON.stringify(S))}catch(e){}}
+
+/* ---------- 規則 ---------- */
+// 決定目前由誰審核
+const REMIND=2,WARN=4,EXPIRE=5; // 工作天：第 2 天提醒、第 4 天預告、第 5 天逾期改派
+function reviewerOf(a){
+  if(a.status!=='pending')return null;
+  if(a.assignee&&a.assignee!==a.owner)return {id:a.assignee,acting:true,why:a.assignWhy};
+  const L=activeLeave();
+  if(L&&L.delegate!==a.owner)return {id:L.delegate,acting:true,why:'林經理排休'};
+  if(L)return {id:'owner',acting:true,why:'代理人不能審核自己送出的 AI 助理'};
+  return {id:'manager'};
+}
+// 部門裡可以代理審核的管理職（一般組員不能代理，避免互審）
+const REVIEWERS=['deputy','lead'];
+const DEPT_MEMBERS=['manager','deputy','lead','member','colleague'];
+const canTake=(a,p)=>p!==a.owner;
+// 逾期時改派給誰：依部門管理職名單的順序找下一位；都不適用才交給系統管理員
+function expireTarget(a){const r=reviewerOf(a);if(!r||r.id==='owner')return null;return REVIEWERS.find(p=>p!==r.id&&canTake(a,p))||'owner'}
+const nm=id=>id==='owner'?`系統管理員${P('owner').name}`:P(id).name;
+function progressText(a){
+  const r=reviewerOf(a), L=activeLeave()||{};
+  if(a.status==='draft')return a.owner===S.me?'只有你看得到':'草稿（只有建立者看得到）';
+  if(a.status==='approved')return `${P(a.reviewedBy).name}${a.actingFor?'（代理林經理）':''} 核准・${a.approvedAt}`;
+  if(a.status==='rejected')return `退回原因：${a.rejectReason}`;
+  const wait=a.waitDays?`・已等待 ${a.waitDays} 個工作天`:'';
+  const t=expireTarget(a), soon=t&&!a.expired&&a.waitDays>=WARN?`・明天逾期將改派給${nm(t)}`:'';
+  if(r.id==='manager')return `林經理 審核中${wait}${soon}`;
+  if(a.assignee)return `${nm(r.id)} 審核中（${r.why}）${wait}${soon}`;
+  if(r.id==='owner')return `${nm('owner')} 審核中（${r.why}）${wait}`;
+  return `${P(r.id).name} 代理審核中（林經理排休至 ${fmtDate(L.to)}）${wait}${soon}`;
+}
+function notify(to,text,view){S.notes.unshift({to,text,view,t:now(),read:false})}
+function myQueue(){return S.agents.filter(a=>{const r=reviewerOf(a);return r&&r.id===S.me})}
+function visibleInMarket(a){return a.status==='approved'}
+function isNewFor(a){return a.status==='approved'&&a.approvedDay!=null&&(S.day||0)-a.approvedDay<7&&!((S.opened||{})[S.me]||[]).includes(a.id)}
+
+/* ---------- 動作 ---------- */
+const A={
+  submit(id,note){
+    const a=byId(id);const prevReason=a.status==='rejected'?a.rejectReason:null;a.status='pending';a.note=note;a.submittedAt=now();a.reviewedBy=null;a.actingFor=false;a.waitDays=0;a.assignee=null;a.assignWhy=null;a.ev={};a.expired=false;a.rejectReason=null;
+    const r=reviewerOf(a);
+    a.history.push({ms:tick(),t:now(),text:`${P(a.owner).name} ${prevReason?'修改後重新送出':'送出審核'}，審核人：${nm(r.id)}`});
+    notify(r.id,prevReason?`${P(a.owner).name} 修改後重新送出「${a.name}」，等待你審核${r.acting?'（代理林經理）':''}（上次退回原因：${prevReason}）`:`${P(a.owner).name} 送出「${a.name}」，等待你審核${r.acting?'（代理林經理）':''}`,'review');
+    toast('已送出審核');
+  },
+  withdraw(id){
+    const a=byId(id);const r=reviewerOf(a);a.status='draft';
+    a.history.push({ms:tick(),t:now(),text:`${P(a.owner).name} 撤回審核，回到草稿`});
+    if(r)notify(r.id,`${P(a.owner).name} 撤回了「${a.name}」的審核`,'review');
+    toast('已撤回，可以繼續編輯');
+  },
+  approve(id){
+    const a=byId(id);const r=reviewerOf(a);
+    a.status='approved';a.approvedAt=now();a.approvedDay=S.day||0;a.reviewedBy=S.me;a.actingFor=!!r.acting;a.rv=(a.rv||[]).concat({by:S.me,res:'approved',acting:!!r.acting,t:now()});
+    if(r.acting&&S.me!=='manager')notify('manager',`${P(S.me).name} 代理你核准了「${a.name}」，已上架到${DEPT.name}`,'review');
+    a.history.push({ms:tick(),t:now(),text:`${P(S.me).name}${r.acting?'（代理林經理）':''} 核准，已上架到${DEPT.name}（同事可使用，僅讀取）`});
+    notify(a.owner,`「${a.name}」已核准上架，${DEPT.name}同事現在可以使用`,'agents');
+    Object.keys(PEOPLE).filter(p=>DEPT_OF[p]===deptOf(a)&&p!==a.owner&&p!==S.me&&!(r.acting&&p==='manager')).forEach(p=>notify(p,`${DEPT.name}新上架「${a.name}」（${P(a.owner).name} 建立）`,'market'));
+    toast('已核准並上架');
+  },
+  reject(id,reason){
+    const a=byId(id);const r=reviewerOf(a);
+    a.status='rejected';a.rejectReason=reason;a.reviewedBy=S.me;a.rv=(a.rv||[]).concat({by:S.me,res:'rejected',acting:!!r.acting,t:now()});
+    if(r.acting&&S.me!=='manager')notify('manager',`${P(S.me).name} 代理你退回了「${a.name}」：${reason}`,'review');
+    a.history.push({ms:tick(),t:now(),text:`${P(S.me).name}${r.acting?'（代理林經理）':''} 退回：${reason}`});
+    notify(a.owner,`「${a.name}」被退回：${reason}`,'agents');
+    toast('已退回，並通知建立者');
+  },
+  saveAgent(id,name,desc,kb,prompt,mode){
+    const a=byId(id);if(mode)a.mode=mode;a.name=name;a.desc=desc;a.kb=kb;a.prompt=prompt;
+    a.history.push({ms:tick(),t:now(),text:`${P(S.me).name} 修改設定`});
+    toast('已儲存變更，可以在右側測試新版本');
+  },
+  create(name,desc,model,kb,prompt,mode){
+    const a={id:S.seq++,name,desc:desc||'（未填寫用途）',owner:S.me,status:'draft',model,mode:mode||MODES[0],kb,prompt:prompt||'',history:[{ms:tick(),t:now(),text:`${P(S.me).name} 建立草稿`}]};
+    S.agents.push(a);
+    S.agentId=a.id;S.view='agent';UI.atab='settings';
+    toast('已建立草稿');
+  },
+  setLeave(from,to,delegate){
+    const was=!!activeLeave();
+    S.leave={from,to,delegate};
+    const pend=S.agents.filter(a=>a.status==='pending');
+    if(activeLeave()){
+      // 先通知各建立者與系統管理員，最後才發給代理人一則完整說明（通知最新的排最上面）
+      const own=pend.filter(a=>a.owner===delegate), others=pend.filter(a=>a.owner!==delegate);
+      pend.forEach(a=>{const r=reviewerOf(a);
+        if(a.owner!==delegate)notify(a.owner,`林經理排休，「${a.name}」改由 ${nm(r.id)} 代理審核`,'agents');
+        if(r.id==='owner')notify('owner',`「${a.name}」轉由你審核（${r.why}）`,'review');});
+      if(delegate)notify(delegate,`林經理 ${fmtDate(from)}–${fmtDate(to)} 排休，期間由你代理審核 AI 助理（目前 ${others.length} 件待審）`
+        +(own.length?`。你自己送出的「${own.map(a=>a.name).join('」「')}」不能由自己審核，已改由系統管理員${P('owner').name}審核`:''),'review');
+      toast('已設定排休，待辦已轉給代理人');
+    }else{
+      if(delegate)notify(delegate,`林經理 ${fmtDate(from)}–${fmtDate(to)} 排休，期間將由你代理審核 AI 助理`,'review');
+      toast('已排定排休，開始當天待辦會自動轉給代理人');
+    }
+  },
+  endLeave(){
+    const was=!!activeLeave(),dg=S.leave&&S.leave.delegate;
+    S.leave=null;
+    if(was&&dg)notify(dg,'林經理已結束排休，代理權限已收回；你代理審過的項目仍可在「AI 助理審核 › 已審核」查看','review');
+    if(was)S.tour.leaveEnded=true;
+    S.agents.filter(a=>a.status==='pending'&&!a.assignee).forEach(a=>{if(was)notify('manager',`結束排休後審核回到你手上：「${a.name}」`,'review')});
+    toast(was?'已結束排休，待辦回到你手上':'已取消排休');
+  },
+  handoff(id,to){
+    const a=byId(id);a.assignee=to;a.assignWhy='林經理轉交';
+    a.history.push({ms:tick(),t:now(),text:`林經理 把審核轉交${P(to).name}`});
+    notify(to,`林經理把「${a.name}」轉交給你審核`,'review');
+    notify(a.owner,`林經理把「${a.name}」轉交${P(to).name}審核`,'agents');
+    toast(`已轉交${P(to).name}，並通知建立者`);
+  },
+  // 快轉到下一個時間點：第 2 天提醒審核人；第 4 天預告逾期（審核人＋建立者）；第 5 天逾期改派（審核人＋建立者＋新審核人）
+  fastForward(){
+    const pend=S.agents.filter(a=>a.status==='pending');
+    if(!pend.length){toast('目前沒有審核中的 AI 助理');return}
+    const next=a=>[REMIND,WARN,EXPIRE].find(d=>d>(a.waitDays||0));
+        const delta=Math.max(1,Math.min(...pend.map(a=>(next(a)||(a.waitDays||0)+1)-(a.waitDays||0))));
+    pend.forEach(a=>{
+      a.ev=a.ev||{};a.waitDays=(a.waitDays||0)+delta;
+      const r=reviewerOf(a), t=expireTarget(a), w=a.waitDays;
+      if(w>=REMIND&&!a.ev.remind){a.ev.remind=true;
+        notify(r.id,`提醒：「${a.name}」已等待 ${w} 個工作天，請審核${r.id==='manager'?'；也可以在審核視窗轉交其他管理職審核':''}`,'review');}
+      if(w>=WARN&&!a.ev.warn&&t){a.ev.warn=true;
+        notify(r.id,`「${a.name}」明天（第 ${EXPIRE} 個工作天）逾期，逾期後系統會改派給${nm(t)}審核`,'review');
+        notify(a.owner,`「${a.name}」已等待 ${w} 個工作天；明天仍未審核的話，系統會改派給${nm(t)}`,'agents');}
+      if(w>=EXPIRE&&!a.ev.expire&&t){a.ev.expire=true;a.expired=true;
+        const from=r.id;a.assignee=t;a.assignWhy=`逾期改派，原審核人${nm(from)}`;
+        a.history.push({ms:tick(),t:now(),text:`${nm(from)} 逾 ${EXPIRE} 個工作天未審，系統改派給${nm(t)}`});
+        notify(from,`「${a.name}」已逾期（${EXPIRE} 個工作天未審），系統已改派給${nm(t)}`,'review');
+        notify(t,`「${a.name}」逾期改派給你審核（原審核人：${nm(from)}）`,'review');
+        notify(a.owner,`「${a.name}」已逾期，改由${nm(t)}審核，流程繼續進行`,'agents');}
+    });
+    S.day=(S.day||0)+delta;
+    toast(`已快轉 ${delta} 個工作天`);
+  },
+};
+function byId(id){return S.agents.find(a=>a.id===+id)}
+
+/* ---------- 畫面 ---------- */
+function badge(st){const [t,c]=STATUS[st];return `<span class="badge ${c}">${t}</span>`}
+function av(id,size=28){const p=P(id);return `<span class="avatar" style="background:${p.color};width:${size}px;height:${size}px">${esc(p.name[0])}</span>`}
+
+function header(){
+  const unread=S.notes.filter(n=>n.to===S.me&&!n.read).length;
+  const inert=t=>`<button class="tl" data-act="toast" data-msg="原型未包含此功能">${t}</button>`;
+  return `<header class="top">
+    <div class="logo"><i></i>MAIAGENT</div>
+    <div class="crumb">${crumb()}</div>
+    <div class="spacer"></div>
+    <button class="tl ai" data-act="toast" data-msg="原型未包含此功能">✦ Ask AI</button>${inert('Cookbook')}${inert('文件')}${inert('支援中心')}
+    <button class="bell" data-act="bell" aria-label="通知">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4b5563" stroke-width="1.8"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      ${unread?`<span class="dot">${unread}</span>`:''}
+    </button>
+    <button class="userbtn" data-act="umenu">${av(S.me)}<span class="u-txt"><b>${esc(P(S.me).name)}</b><span class="sub">${myDept()}</span></span><span class="caret">⌄</span></button>
+  </header>`;
+}
+function sidebar(){
+  const q=myQueue().length;
+  const inert=(t,cls='',extra='')=>`<button class="nav inert ${cls}" data-act="toast" data-msg="原型未包含此頁面">${t}${extra}</button>`;
+  const page=(it,cls='')=>`<button class="nav ${cls} ${S.view===it.v||(S.view==='agent'&&it.v==='agents')?'on':''}" data-act="go" data-v="${it.v}">${LABEL[it.v]}${it.isNew?'':''}${it.v==='review'&&q?`<span class="cnt">${q}</span>`:''}</button>`;
+  const item=(it,cls)=>it.v?(allowed(it.v)?page(it,cls):''):inert(it.i,cls,it.beta?'<span class="beta">Beta</span>':'');
+  return `<nav class="side">
+    <div class="org">${myDept()}</div>
+    ${SIDE.map(x=>{
+      if(!x.g)return item(x,'');
+      if(x.ownerOnly&&S.me!=='owner')return '';
+      if(!x.items)return inert(x.g,'grp','<span class="caret">›</span>');
+      return `<div class="nav grp">${x.g}<span class="caret">⌄</span></div>`+x.items.map(it=>item(it,'sub')).join('');
+    }).join('')}
+    <div class="nav-sep"></div>
+    <div class="nav-group">原型說明</div>
+    <button class="nav sub ${S.view==='doc'?'on':''}" data-act="go" data-v="doc">設計說明</button>
+  </nav>`;
+}
+function vAgents(){
+  if(S.agents.some(a=>a.owner===S.me&&a.status==='rejected'))S.tour.sawReject=true;
+  // AI 助理頁是「我建立的」工作區；別人的 AI 助理到 Agent 市集使用，看不到別人的審核狀態（系統管理員可看全部）
+  const list=sortList(S.agents.filter(a=>S.me==='owner'||a.owner===S.me).filter(a=>!UI.filter||a.status===UI.filter).filter(a=>!UI.aq||a.name.includes(UI.aq)||agentId(a).startsWith(UI.aq)));
+  const rej=S.agents.filter(a=>a.owner===S.me&&a.status==='rejected');
+  return `<div class="page-h"><h1>AI 助理</h1><p>${S.me==='owner'?'所有部門的 AI 助理':'我建立的 AI 助理'}</p><div class="spacer"></div><button class="btn primary" data-act="openCreate">＋ 建立 AI 助理</button></div>
+  ${rej.map(a=>`<div class="warn" style="margin-bottom:12px">「${esc(a.name)}」被退回：${esc(a.rejectReason)}　<button class="btn link" data-act="openAgent" data-id="${a.id}">查看並修改</button></div>`).join('')}
+  <div class="card">
+    <div class="toolbar">
+      <input type="text" class="search" id="aq" placeholder="請輸入 AI 助理名稱或 ID" value="${esc(UI.aq)}">
+      <select class="inp sm" disabled><option>全部大語言模型</option></select>
+      <select class="inp sm" disabled><option>全部回答模式</option></select>
+      <select class="inp sm newfield" data-act="filter" title="新增：依審核狀態篩選"><option value="">全部狀態</option>${Object.entries(STATUS).map(([k,[t]])=>`<option value="${k}" ${UI.filter===k?'selected':''}>${t}</option>`).join('')}</select>
+      <button class="btn" data-act="clearFilter">重置篩選</button>
+    </div>
+    <div class="tscroll"><table class="atable"><thead><tr><th>名稱</th><th>狀態</th><th>大語言模型</th><th>回答模式</th><th>關聯知識庫</th>${sortTh('updated','最後更新','style="width:120px"')}<th style="width:130px">操作</th></tr></thead><tbody>
+    ${list.length?list.map(a=>`<tr class="row" data-act="openAgent" data-id="${a.id}" title="進入 AI 助理頁">
+      <td><button class="name-link" data-act="openAgent" data-id="${a.id}">${esc(a.name)}</button><div class="sub"><span class="mono">${agentId(a)}</span>${S.me==='owner'?`・${esc(P(a.owner).name)} 建立`:''}</div></td>
+      <td>${badge(a.status)}<div class="sub" style="margin-top:4px;max-width:240px">${esc(progressText(a))}</div></td>
+      <td>${esc(a.model)}</td><td>${esc(a.mode||MODES[0])}</td><td class="sub">${esc(a.kb)}</td>
+      <td class="sub" style="white-space:nowrap">${esc(lastT(a))}</td>
+      <td><div class="actions">${a.owner===S.me?rowActions(a):a.status==='approved'?`<button class="btn" data-act="chatOpen" data-id="${a.id}">開始對話</button>`:`<span class="sub">—</span>`}</div></td></tr>`).join('')
+      :`<tr><td colspan="7" class="empty">${UI.filter||UI.aq?'沒有符合的 AI 助理':'還沒有建立 AI 助理'}</td></tr>`}
+    </tbody></table></div>
+  </div>`;
+}
+// 排序：只依「最後更新」（最後一筆紀錄時間）
+function lastT(a){return a.history[a.history.length-1].t}
+function tsKey(t){const m=t.match(/(\d+)\/(\d+)\s+(\d+):(\d+)/);return m?((+m[1])*1e6+(+m[2])*1e4+(+m[3])*100+(+m[4])):0}
+function sortList(list){
+  const k=UI.sort.dir==='asc'?1:-1;
+  const ms=a=>a.history[a.history.length-1].ms||0;
+  return list.slice().sort((x,y)=>((tsKey(lastT(x))-tsKey(lastT(y)))||(ms(x)-ms(y)))*k);
+}
+function sortTh(key,label,extra=''){
+  const on=UI.sort.key===key, arrow=on?(UI.sort.dir==='asc'?'↑':'↓'):'↕';
+  return `<th ${extra}><button class="th-sort ${on?'on':''}" data-act="sort" data-v="${key}" aria-label="依最後更新時間排序，目前${UI.sort.dir==='asc'?'舊到新':'新到舊'}">${label}<span>${arrow}</span></button></th>`;
+}
+// 完整 ID（UUID 格式，比照平台）；列表空間有限才縮短
+// 未儲存的編輯暫存在 UI.edit：重繪時沿用，儲存或捨棄才清掉
+const MODES=['Agent 模式','RAG 問答','模板','混合'];
+const KBS=['產品價目表','歷史報價單','客訴處理 SOP','常見問題','出貨與物流 SOP','生產排程表'];
+const kbList=v=>(v||'').split('、').filter(Boolean);
+function kbPicker(p,list,dis,open){
+  const tags=list.length?list.map(k=>`<span class="kb-tag">${esc(k)}${dis?'':`<button type="button" class="x" data-act="kbDel" data-p="${p}" data-v="${esc(k)}" aria-label="移除 ${esc(k)}">✕</button>`}</span>`).join(''):'<span class="ph">請選擇知識庫</span>';
+  return `<div class="kbp ${open?'open':''}" id="${p}-kbp"><div class="inp kb-trigger ${dis?'disabled':''}" ${dis?'aria-disabled="true"':`data-act="kbOpen" tabindex="0"`} role="combobox" aria-haspopup="listbox" aria-expanded="${!!open}"><span class="kb-val">${tags}</span><svg class="kb-caret" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>${dis?'':`<div class="kb-menu" role="listbox" aria-multiselectable="true">${KBS.map(k=>`<label class="kb-opt"><input type="checkbox" class="kb-cb" data-p="${p}" value="${esc(k)}" ${list.includes(k)?'checked':''}>${esc(k)}</label>`).join('')}<div class="kb-foot">找不到？<button type="button" class="kb-new" data-act="kbNew">前往新增知識庫 ↗</button></div></div>`}</div>`;
+}
+function getKb(p){return p==='ed'?kbList(ev(byId(S.agentId),'kb')):(UI.crKb||[])}
+function setKb(p,list){
+  if(p==='ed'){
+    if(!UI.edit||UI.edit.id!==S.agentId)UI.edit={id:S.agentId,v:{}};
+    UI.edit.v.kb=list.join('、');
+    ['dirty-bar','dirty-note'].forEach(id=>{const x=document.getElementById(id);if(x)x.hidden=false});
+  }else UI.crKb=list;
+  const box=document.getElementById(p+'-kbp');if(box)box.outerHTML=kbPicker(p,list,false,box.classList.contains('open'));
+}
+const MODE_HELP=`<span class="help" tabindex="0" role="button" aria-label="回答模式說明">?<span class="help-tip" role="tooltip">
+  <b>Agent 模式（預設）：</b>可以自己決定要查哪些資料、呼叫哪些工具，分多步完成任務。適合查資料庫、要執行動作的任務。<br>
+  <b>RAG 問答：</b>只根據知識庫內容回答，不呼叫工具。適合一般問答。<br>
+  <b>模板：</b>依指定格式回覆，適合固定版型。<br>
+  <b>混合：</b>部分照模板、部分自由回答。</span></span>`;
+function ev(a,f){return UI.edit&&UI.edit.id===a.id&&f in UI.edit.v?UI.edit.v[f]:(a[f]||'')}
+function isDirty(){return !!(UI.edit&&UI.edit.id===S.agentId&&Object.keys(UI.edit.v).length)}
+function agentFullId(a){const h=n=>((a.id*n)>>>0).toString(16).padStart(8,'0');const x=h(2654435761)+h(2246822519)+h(3266489917)+h(668265263);return `${x.slice(0,8)}-${x.slice(8,12)}-4${x.slice(13,16)}-a${x.slice(17,20)}-${x.slice(20,32)}`}
+function agentId(a){return agentFullId(a).slice(0,8)+'…'}
+function rowActions(a){
+  // 每列只放一個依狀態決定的主要動作；其他都從名稱進入 AI 助理頁
+  if(a.status==='draft')return `<button class="btn primary" data-act="openSubmit" data-id="${a.id}">送出審核</button>`;
+  if(a.status==='rejected')return `<button class="btn" data-act="openAgent" data-id="${a.id}">修改</button>`;
+  if(a.status==='pending')return `<button class="btn" data-act="withdraw" data-id="${a.id}">撤回</button>`;
+  return `<button class="btn" data-act="chatOpen" data-id="${a.id}">開始對話</button>`;
+}
+function vAgent(){
+  const a=byId(S.agentId);if(!a)return '';
+  const mine=a.owner===S.me, editable=mine&&(a.status==='draft'||a.status==='rejected');
+  if(mine&&a.status==='rejected')S.tour.sawReject=true;
+  const banner={
+    draft:['info',`草稿：只有你看得到。在右側測試，確認回答沒問題後按「送出審核」。`],
+    pending:['warn',`${progressText(a)}。設定已鎖定，確保主管核准的就是上架的版本；需要修改請按右上角的「撤回」。`],
+    rejected:['bad',`已退回：${a.rejectReason}。修改設定、在右側測試確認後按「重新送出」。`],
+    approved:['good',`已上架：全${deptOf(a)}可使用（僅讀取）。上架版本不能直接修改，改版流程不在本題範圍。`],
+  }[a.status];
+  const act=!mine?'':a.status==='draft'?`<button class="btn primary" data-act="openSubmit" data-id="${a.id}">送出審核</button>`
+    :a.status==='rejected'?`<button class="btn primary" data-act="openSubmit" data-id="${a.id}">重新送出</button>`
+    :a.status==='pending'?`<button class="btn" id="hdr-act" data-act="withdraw" data-id="${a.id}">撤回</button>`
+    :'';
+  const dis=editable?'':'disabled';
+  if(!UI.tchat||UI.tchat.id!==a.id)UI.tchat={id:a.id,msgs:[{r:'a',t:`你好，我是「${a.name}」。${a.desc}`}]};
+  const testing=a.status!=='approved';
+  // 一頁完成：左邊設定與審核紀錄，右邊常駐測試對話（沿用平台 Agent 頁的測試對話）
+  return `<div class="agent-top"><div class="page-h agent-h"><button class="back" data-act="go" data-v="agents" aria-label="返回 AI 助理" title="返回 AI 助理">‹</button><span class="ic">${esc(a.name[0])}</span><div><div class="row-flex"><h1>${esc(a.name)}</h1>${badge(a.status)}</div><p class="sub id-line">${esc(P(a.owner).name)} 建立・ID <span class="mono">${agentFullId(a)}</span><button class="copy" data-act="copyId" data-v="${agentFullId(a)}" title="複製 ID" aria-label="複製 ID">⧉</button></p></div><div class="spacer"></div>${act}</div>
+  <div class="banner ${banner[0]} tight banner-row"><span>${esc(banner[1])}</span></div></div>
+  <div class="agent-grid">
+    <div class="card" style="padding-top:0">
+      <div class="tabs"><button class="tab ${UI.atab!=='history'?'on':''}" data-act="atab" data-v="settings">設定</button><button class="tab ${UI.atab==='history'?'on':''}" data-act="atab" data-v="history">審核紀錄</button></div>
+      <div class="tab-stack">
+        <div class="tab-pane ${UI.atab!=='history'?'on':''} ${editable?'':'locked'}" ${editable?'':`data-act="lockedHint" data-id="${a.id}"`}><section><h4 class="c-h">基本設定</h4>
+          <label class="f" style="margin-top:0">名稱</label><input type="text" id="ed-name" value="${esc(ev(a,'name'))}" ${dis}>
+          <label class="f">LLM 模型</label><select class="inp" ${dis}><option>${esc(a.model)}</option></select>
+          <label class="f">用途說明</label><input type="text" id="ed-desc" value="${esc(ev(a,'desc'))}" ${dis}>
+        </section>
+        <section class="sec-gap"><h4 class="c-h">回答模式設定</h4>
+          <label class="f" style="margin-top:0">回答模式 ${MODE_HELP}</label><select class="inp" id="ed-mode" ${dis}>${MODES.map(m=>`<option ${(ev(a,'mode')||MODES[0])===m?'selected':''}>${m}</option>`).join('')}</select>
+        </section>
+        <section class="sec-gap"><h4 class="c-h">角色指令</h4>
+          <textarea id="ed-prompt" data-tip="修改角色指令" rows="5" placeholder="告訴 AI 助理它是誰、要怎麼回答、哪些事不能做。例如：語氣客氣，不可承諾賠償或交期。" ${dis}>${esc(ev(a,'prompt'))}</textarea>
+          <div class="sub" style="margin-top:4px">回答不理想時，修改角色指令並儲存變更後，在右側再測試一次。主管審核時會看到這段內容。</div>
+        </section>
+        <section class="sec-gap"><h4 class="c-h">知識庫設定</h4>
+          <label class="f" style="margin-top:0">知識庫</label>${kbPicker('ed',kbList(ev(a,'kb')),!editable)}
+        </section>
+        <section class="sec-gap"><h4 class="c-h">開放對象</h4>
+          <select class="inp" id="ed-scope" ${dis}><option value="dept" selected>${deptOf(a)}（部門全體，僅讀取）</option><option disabled>全公司（需另外申請）</option></select>
+          <div class="sub" style="margin-top:4px">送出審核後主管才看得到；核准後系統會把這個 AI 助理分配給「${deptOf(a)}」角色（僅讀取），部門同事就能使用。</div>
+        </section>
+        <p class="sub c-note">頭像、開場白、工具、對話平台等其他設定沿用平台現有的設定頁，原型省略。</p>
+        ${editable?`<div class="dirty-bar" id="dirty-bar" ${isDirty()?'':'hidden'}><span>有未儲存的變更</span><span class="spacer"></span><button class="btn" data-act="discardEdit">捨棄變更</button><button class="btn primary" data-act="saveAgent" data-id="${a.id}">儲存變更</button></div>`:''}</div>
+        <div class="tab-pane ${UI.atab==='history'?'on':''}">${UI.atab==='history'&&mine?(S.tour.sawHistory=true,''):''}<ul class="timeline" style="margin-top:8px">${a.history.slice().reverse().map(h=>`<li><div>${esc(h.text)}</div><div class="t">${esc(h.t)}</div></li>`).join('')}</ul></div>
+      </div>
+    </div>
+    <aside class="card test-panel">
+      <div class="dirty-note" id="dirty-note" ${isDirty()?'':'hidden'}>有未儲存的變更，目前測試的是已儲存的版本</div>
+      <div class="tp-h"><b>${testing?'測試對話':'對話'}</b><span class="sub">${testing?(mine?`只有你看得到・已測試 ${a.tests||0} 次`:'只有你看得到'):`全${deptOf(a)}可使用`}</span></div>
+      <div class="log-wrap"><div class="log" id="tlog">${UI.tchat.msgs.map(m=>`<div class="msg ${m.r}">${esc(m.t)}</div>`).join('')}</div></div>
+      <form class="f-in" data-act="tchat"><input type="text" id="t-in" placeholder="輸入問題，Enter 送出" autocomplete="off" value="${prefillTest()?esc(DEMO_A.q):''}"><button class="btn" data-tip="送出測試問題">送出</button></form>
+    </aside>
+  </div>`;
+}
+function vReview(){
+  const todo=myQueue();
+  // 已審核：自己審過的；主管另外看得到代理人替他審的
+  const mineRv=a=>(a.rv||[]).filter(x=>x.by===S.me||(S.me==='manager'&&x.acting));
+  const done=S.agents.filter(a=>mineRv(a).length).sort((x,y)=>(y.rv.length?1:0)-(x.rv.length?1:0));
+  const L=activeLeave()||{};
+  const actingNote=S.me!=='manager'&&todo.length?`<div class="info" style="margin-bottom:12px">${activeLeave()&&activeLeave().delegate===S.me?`林經理 ${fmtDate(L.from)}–${fmtDate(L.to)} 排休，期間由你代理審核。代理權限只有審核，排休結束自動收回。`:'以下項目轉給你審核（原因標示在每一筆），處理後會記錄為「代理林經理」。'}</div>`:'';
+  const managerLeave=S.me==='manager'&&activeLeave()?`<div class="warn" style="margin-bottom:12px">你目前設定為排休中（${fmtDate(L.from)}–${fmtDate(L.to)}），待審項目已轉給 ${P(L.delegate).name}。<button class="btn link" data-act="go" data-v="leave">修改設定</button></div>`:'';
+  const list=UI.rtab==='todo'?todo:done;
+  return `<div class="page-h"><h1>AI 助理審核</h1><p>等你審核的 AI 助理</p></div>
+  ${managerLeave}${actingNote}
+  <div class="card">
+    <div class="tabs"><button class="tab ${UI.rtab==='todo'?'on':''}" data-act="rtab" data-v="todo">待審核（${todo.length}）</button><button class="tab ${UI.rtab==='done'?'on':''}" data-act="rtab" data-v="done">已審核（${done.length}）</button></div>
+    ${list.length?list.map(a=>{const r=reviewerOf(a);return `<div class="ritem">
+      ${av(a.owner,36)}
+      <div class="grow"><div class="row-flex"><span class="name">${esc(a.name)}</span>${UI.rtab==='done'?badge(a.status):''}${UI.rtab==='done'&&(()=>{const x=mineRv(a).slice(-1)[0];return x&&x.by!==S.me})()?`<span class="badge b-acting">${esc(P(mineRv(a).slice(-1)[0].by).name)}代理</span>`:''}${r&&r.acting?`<span class="badge b-acting">代理林經理</span>`:''}</div>
+      <div class="sub">${esc(P(a.owner).name)} 送出・${esc(a.submittedAt||'')}${UI.rtab==='todo'&&a.waitDays?`・已等待 ${a.waitDays} 個工作天`:''}${UI.rtab==='todo'&&r&&r.why?`・${esc(r.why)}`:''}${UI.rtab==='todo'&&r&&r.id==='manager'&&!a.expired&&a.waitDays>=WARN?`・<span style="color:var(--orange)">明天逾期</span>`:''}</div>
+      ${a.note?`<div class="sub">送出說明：「${esc(a.note)}」</div>`:''}</div>
+      ${UI.rtab==='todo'?`<button class="btn primary" data-act="openReview" data-id="${a.id}">開始審核</button>`:`<button class="btn" data-act="detail" data-id="${a.id}">查看紀錄</button>`}
+    </div>`}).join(''):`<div class="empty">${UI.rtab==='todo'?(REVIEWERS.includes(S.me)?'目前沒有轉給你的審核':'沒有待審核的 AI 助理'):'還沒有審核過的 AI 助理'}</div>`}
+  </div>`;
+}
+// Agent 市集照平台現況的「官方內建／組織自建」分頁與搜尋；與本題無關的最愛功能不放進原型
+const BUILTIN = [['簡報產生器','把整理好的資料轉成簡報大綱與講稿'],['會議記錄整理','把逐字稿整理成重點、決議與待辦事項']];
+function vMarket(){
+  
+  if(S.me==='other'&&UI.mtab==='self')S.tour.sawOther=true;
+  const favs=S.fav[S.me]||[], q=UI.mq.trim();
+  const match=(n,d)=>!q||n.includes(q)||d.includes(q);
+  let list=S.agents.filter(a=>visibleInMarket(a)&&(S.me==='owner'||deptOf(a)===myDept())&&match(a.name,a.desc));
+  if(UI.favOnly)list=list.filter(a=>favs.includes(a.id));
+  list.sort((a,b)=>(isNewFor(b)?1:0)-(isNewFor(a)?1:0));
+  const tab=(k,t)=>`<button class="tab ${UI.mtab===k?'on':''}" data-act="mtab" data-v="${k}">${t}</button>`;
+  const star=a=>`<button class="star ${favs.includes(a.id)?'on':''}" data-act="fav" data-id="${a.id}" title="${favs.includes(a.id)?'移除最愛':'加入最愛'}">${favs.includes(a.id)?'★':'☆'}</button>`;
+  const self=list.length?`<div class="grid">${list.map(a=>`<div class="acard" data-aid="${a.id}">
+    <div class="row-flex"><span class="ic">${esc(a.name[0])}</span><div style="flex:1;min-width:0"><div class="name">${esc(a.name)}</div><div class="sub">${esc(P(a.owner).name)}・${deptOf(a)}</div></div>${isNewFor(a)?'<span class="badge b-approved">新上架</span>':''}</div>
+    <div class="sub" style="color:var(--text)">${esc(a.desc)}</div>
+    <div class="row-flex"><span class="sub">${esc(a.approvedAt.split(' ')[0])} 上架</span><span class="spacer"></span><button class="btn" data-act="chatOpen" data-id="${a.id}">開始對話</button></div>
+  </div>`).join('')}</div>`:`<div class="card"><div class="empty">${q?'找不到符合的 AI 助理':'目前沒有可以使用的 AI 助理'}</div></div>`;
+  const built=`<div class="grid">${BUILTIN.filter(([n,d])=>match(n,d)).map(([n,d])=>`<div class="acard"><div class="row-flex"><span class="ic">${n[0]}</span><div style="flex:1"><div class="name">${n}</div><div class="sub">MaiAgent 官方</div></div></div><div class="sub" style="color:var(--text)">${d}</div><div class="row-flex"><span class="spacer"></span><button class="btn" data-act="toast" data-msg="原型未包含官方內建 Agent">開始對話</button></div></div>`).join('')}</div>`;
+  return `<div class="page-h"><h1>Agent 市集</h1></div>
+  <div class="tabs">${tab('builtin','官方內建')}${tab('self','組織自建')}</div>
+  <div class="toolbar">
+    <input type="text" class="search" id="mq" data-act="mq" placeholder="搜尋 Agent 名稱或描述…" value="${esc(UI.mq)}">
+  </div>
+  ${UI.mtab==='self'?self+`<p class="sub" style="margin-top:14px">${S.me==='owner'?'系統管理員看得到所有部門的 AI 助理。':`這裡只會出現<b>${myDept()}</b>主管核准過的 AI 助理。同事的草稿、審核中的 AI 助理，以及其他部門的 AI 助理都不會出現。`}</p>`:built}`;
+}
+function vLeaveInner(){
+  const L=S.leave;
+  const head=`<div class="page-h" style="max-width:560px"><h2 class="sec-h">排休與代理</h2><div class="spacer"></div>${L?'':'<button class="btn primary" data-act="openLeave">＋ 新增排休</button>'}</div>
+  <p class="sub" style="margin:-8px 0 14px;max-width:560px">沿用平台「我的排休」：期間內的待辦改由代理人處理；區間結束後自動恢復。</p>`;
+  if(!L)return head+`<div class="card" style="max-width:560px"><div class="empty">目前沒有排休安排<br><span class="sub">排休期間的待辦會自動轉給代理人</span></div></div>`;
+  const st=leaveState(L);
+  const stBadge={active:'<span class="badge b-pending">排休中</span>',scheduled:'<span class="badge b-draft">已排定</span>',ended:'<span class="badge b-approved">已結束</span>'}[st];
+  // 排休頁是主管的通用頁面：只告知有幾件待辦，細節收在「查看」裡
+  const pendAll=S.agents.filter(a=>a.status==='pending');
+  const items=pendAll.map(a=>{const r=reviewerOf(a);return `<li>${esc(a.name)}<span class="sub">（${esc(P(a.owner).name)} 送出）</span> → ${esc(nm(r.id))}${r.id==='owner'?'<div class="sub">代理人不能審核自己送出的 AI 助理</div>':''}</li>`}).join('');
+  const handover=st==='active'
+    ?(pendAll.length?`<details class="handover"><summary>AI 助理審核 ${pendAll.length}  件，已交接<span class="hv-more">查看</span></summary><ul>${items}</ul></details>`:`目前沒有待辦事項<div class="sub">排休期間的新待辦會轉給 ${P(L.delegate).name}</div>`)
+    :st==='scheduled'?`${fmtDate(L.from)} 起，待辦會轉給 ${P(L.delegate).name}`:'待辦已回到你手上';
+  return head+`<div class="card" style="max-width:560px">
+    <div class="row-flex"><b style="font-size:16px">${fmtDate(L.from)} – ${fmtDate(L.to)}</b>${stBadge}</div>
+    <dl class="kv" style="margin-top:12px"><dt>代理人</dt><dd>${esc(P(L.delegate).name)}（${esc(P(L.delegate).role)}）</dd><dt>交接事項</dt><dd>${handover}</dd></dl>
+    <div class="actions" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn" data-act="openLeave">修改</button>
+      <button class="btn danger" data-act="endLeave">${st==='active'?'提前結束排休':'取消排休'}</button>
+    </div>
+  </div>`;
+}
+function vLeave(){
+  const g=[['個人帳號',['個人資料','我的組織','邀請管理','帳號安全']],['目前組織',['Credit 額度','API 金鑰','排休與代理']]];
+  return `<div class="page-h"><h1>帳號</h1></div>
+  <div class="acct">
+    <div class="acct-side">${g.map(([t,its])=>`<div class="c-g">${t}</div>`+its.map(x=>x==='排休與代理'?`<div class="c-i on">${x}</div>`:`<button class="c-i off" data-act="toast" data-msg="原型未包含此頁面">${x}</button>`).join('')).join('')}</div>
+    <div class="acct-main">${vLeaveInner()}</div>
+  </div>`;
+}
+function vRoles(){
+  if(UI.role)return vRoleEdit();
+  return `<div class="page-h"><h1>角色權限</h1><p>6 個部門角色與主管已設定好</p><div class="spacer"></div><button class="btn primary" data-act="toast" data-msg="部門建立不在本題範圍">＋ 新增角色</button></div>
+  <div class="card">
+    <div class="toolbar"><input type="text" class="search" placeholder="請輸入角色名稱或 ID" disabled><button class="btn" disabled>重置篩選</button></div>
+    <table><thead><tr><th>名稱</th><th>權限</th><th>成員</th><th style="width:80px">操作</th></tr></thead><tbody>
+    ${ROLES.map(r=>`<tr><td><span class="name">${r.name}</span> ${r.tag?`<span class="badge ${r.tag==='組織擁有者'?'b-acting':'b-draft'}">${r.tag}</span>`:''}</td><td class="sub">${r.perm}</td><td class="sub">${r.members}</td>
+      <td>${r.edit?'<button class="btn link" data-act="roleOpen">編輯</button>':'<button class="btn link muted" data-act="toast" data-msg="原型只示範業務一部" title="原型只示範業務一部">編輯</button>'}</td></tr>`).join('')}
+    </tbody></table>
+    <p class="sub" style="margin:12px 0 0">原型只示範「業務一部」，其他部門的流程相同。</p>
+  </div>`;
+}
+function vRoleEdit(){
+  S.tour.sawRoles=true;
+  const bound=S.agents.filter(a=>a.status==='approved'&&deptOf(a)===DEPT.name);
+  const tabs=['角色權限','分配成員','分配 MaiGPT 使用權限','分配 AI 助理','分配知識庫','分配資料庫','分配工具'];
+  const rt=UI.roleTab||'分配 AI 助理';
+  const ck=on=>`<input type="checkbox" ${on?'checked':''} disabled>`;
+  return `<button class="btn link" data-act="roleBack">‹ 返回角色</button>
+  <div class="page-h"><h1>編輯角色：${DEPT.name}</h1><p>沿用平台現有的角色設定頁，不新增權限設定</p></div>
+  <div class="card" style="padding:0 20px 20px">
+    <div class="tabs" style="overflow-x:auto">${tabs.map(t=>{const ok=t==='分配 AI 助理'||t==='分配成員';return `<button class="tab ${t===rt?'on':''} ${ok?'':'muted-tab'}" ${ok?`data-act="roleTab" data-v="${t}"`:`data-act="toast" data-msg="沿用平台現有設定，原型只示範與本題相關的分頁"`} style="white-space:nowrap">${t}</button>`}).join('')}</div>
+${rt==='分配成員'?`
+    <div class="info" style="margin-bottom:14px">「業務一部」角色的成員。<b>主管</b>與<b>管理職</b>由系統管理員在這裡標記（題目說明已設定好）：主管負責審核，管理職可以擔任代理人或被轉交、改派。</div>
+    <table><thead><tr><th>成員</th><th>在審核流程中的身分</th></tr></thead><tbody>
+    ${['manager','deputy','lead','member','colleague'].map(id=>`<tr><td><div class="row-flex">${av(id,28)}<div><div class="name">${esc(P(id).name)}</div><div class="sub">${esc(P(id).role)}</div></div></div></td><td>${id==='manager'?'<span class="badge b-pending">主管</span><span class="sub">　審核部門組員送出的 AI 助理</span>':REVIEWERS.includes(id)?'<span class="badge b-acting">管理職</span><span class="sub">　可擔任代理人、被轉交或改派</span>':'<span class="sub">組員</span>'}</td></tr>`).join('')}
+      <tr><td colspan="2" class="sub">另有 4 位成員（原型省略）</td></tr>
+    </tbody></table>
+`:`
+    <div class="info" style="margin-bottom:14px"><b>業務一部的成員</b>能對這些 AI 助理做什麼。主管核准後系統自動加入，只開「讀取」：<b>同事可以用，不能改</b>。<div class="sub" style="margin-top:4px">建立者另有自己版本的編輯權，不受這裡影響。</div></div>
+    <table><thead><tr><th>AI 助理（上架版）</th><th style="width:84px">讀取<div class="sub" style="font-weight:400">可以使用</div></th><th style="width:84px">編輯<div class="sub" style="font-weight:400">可以改設定</div></th><th style="width:84px">刪除</th><th>來源</th></tr></thead><tbody>
+    ${bound.length?bound.map(a=>`<tr><td><div class="name">${esc(a.name)}</div><div class="sub">${esc(P(a.owner).name)} 建立</div></td><td>${ck(1)}</td><td>${ck(0)}</td><td>${ck(0)}</td>
+      <td><span class="badge b-approved">核准自動綁定</span><div class="sub">${esc(P(a.reviewedBy).name)}${a.actingFor?'（代理林經理）':''}・${esc(a.approvedAt)}</div></td></tr>`).join('')
+      :'<tr><td colspan="5" class="empty">尚未綁定任何 AI 助理</td></tr>'}
+    </tbody></table>
+`}
+  </div>`;
+}
+function vDoc(){
+  return `<div class="doc">
+  <div class="page-h"><h1>設計說明</h1><p>從組員按下「送出審核」，到部門同事看得到這個 AI 助理</p></div>
+  <div class="card"><h2>重點摘要</h2><ol class="tldr">
+    <li><b>核准＝上架。</b>主管按「核准並上架」，系統自動把 AI 助理分配給部門角色、只開讀取，取代手冊裡在平台外核准、再手動綁定的流程。</li>
+    <li><b>組員不能自己開放。</b>用「開放對象」取代平台的「權限設定」，選了不會立刻生效，堵住不經核准就開放給部門的漏洞。</li>
+    <li><b>改 → 測 → 送。</b>草稿就能測試；送出時審核中鎖定，主管看得到角色指令、知識庫和測試次數，審的就是上架的版本。</li>
+    <li><b>主管不在也不卡。</b>排休有代理人、沒空可轉交、第 5 個工作天逾期改派，審核權一直留在部門裡；仍然只有一層核准。</li>
+    <li><b>三方都知道進度。</b>組員、主管、同事各有通知與狀態，組員看得到卡在誰手上、等了幾天。</li>
+  </ol></div>
+  <div class="card"><h2>五個展示情境</h2>
+    <p class="sub" style="margin:0 0 10px">原型的導覽依這五段進行，每段只講一件事；後一段接著前一段的結果，所以前後看到的 AI 助理一致。</p>
+    <table><thead><tr><th style="width:150px">情境</th><th>示範什麼</th><th style="width:150px">用到的 AI 助理</th></tr></thead><tbody>
+      <tr><td><b>① 建立到上架</b></td><td>組員建立、測試後送審 → 林經理核准 → 張大明在市集看到並使用；其他部門的黃品妤看不到</td><td>客訴回覆助理</td></tr>
+      <tr><td><b>② 退回與重送</b></td><td>林經理退回並寫原因 → 組員依原因修改、儲存、重新送出 → 核准</td><td>交期查詢助理</td></tr>
+      <tr><td><b>③ 主管請假</b></td><td>林經理排休並指定代理人 → 組員照常送出，審核自動轉給王副理 → 代理核准</td><td>庫存查詢助理</td></tr>
+      <tr><td><b>④ 逾期改派</b></td><td>林經理沒空處理 → 第 2 天提醒、第 4 天預告、第 5 天改派給王副理 → 核准 → 審核紀錄寫清楚經過</td><td>樣品申請助理</td></tr>
+      <tr><td><b>⑤ 平台角色綁定</b></td><td>系統管理員在既有的角色頁，看到前面核准的 AI 助理都自動分配給業務一部、只開讀取</td><td>以上四個</td></tr>
+    </tbody></table>
+  </div>
+  <div class="card"><h2>情境人物</h2>
+    <p class="sub" style="margin:0 0 10px">題目說 6 個部門與主管已設定好。原型以業務一部示範完整流程，另加一位生產管理部同事對照開放範圍；其他部門的流程相同，只是審核人換成各自的主管。</p>
+    <table><thead><tr><th style="width:120px">人物</th><th style="width:150px">身分</th><th>在流程中的角色</th></tr></thead><tbody>
+      <tr><td>林經理</td><td>業務一部主管</td><td>部門主管（題目說的「直屬主管」），負責審核部門組員送出的 AI 助理</td></tr>
+      <tr><td>陳小美</td><td>業務一部組員</td><td>建立「客訴回覆助理」並送出審核；另外三個已測試好的草稿分別示範退回重送（交期查詢助理）、主管請假（庫存查詢助理）、逾期改派（樣品申請助理）</td></tr>
+      <tr><td>王副理</td><td>業務一部副理<br><span class="sub">平台角色：組員</span></td><td>部門管理職：林經理排休時的代理人；審核逾期時的改派對象（部門管理職名單的第一位）</td></tr>
+      <tr><td>劉組長</td><td>業務一部組長<br><span class="sub">平台角色：組員</span></td><td>部門管理職：可以被選為代理人或轉交對象（代理人不一定是副理）</td></tr>
+      <tr><td>張大明</td><td>業務一部組員</td><td>部門同事，核准後才看得到新的 AI 助理</td></tr>
+      <tr><td>黃品妤</td><td>生產管理部組員</td><td>其他部門的同事，用來對照：業務一部的 AI 助理不會出現在她的 Agent 市集</td></tr>
+      <tr><td>周文華</td><td>資訊部・系統管理員<br><span class="sub">平台角色：組織擁有者</span></td><td>只處理例外：例如代理人自己送出的項目；也是在角色頁查看綁定結果的人</td></tr>
+    </tbody></table>
+  </div>
+  <div class="card"><h2>流程</h2>
+    <svg class="flow-svg" viewBox="0 0 760 360" role="img" aria-label="AI 助理狀態流程：草稿送出後進入審核中，核准後上架；審核中可撤回回到草稿，或被退回，修改後重新送出"><defs><marker id="fl-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--muted)"/></marker></defs><g><rect x="20" y="60" width="200" height="96" rx="10" class="fl-box"/><rect x="20" y="60" width="200" height="5" rx="2" style="fill:var(--gray)"/><text x="120.0" y="90" class="fl-t" style="fill:var(--gray)">草稿</text><text x="120.0" y="112" class="fl-s">只有建立者看得到</text><text x="120.0" y="131" class="fl-s">可以反覆修改、測試</text></g><g><rect x="280" y="60" width="200" height="96" rx="10" class="fl-box"/><rect x="280" y="60" width="200" height="5" rx="2" style="fill:var(--orange)"/><text x="380.0" y="90" class="fl-t" style="fill:var(--orange)">審核中</text><text x="380.0" y="112" class="fl-s">建立者＋審核人看得到</text><text x="380.0" y="131" class="fl-s">鎖定編輯，可以撤回</text></g><g><rect x="540" y="60" width="200" height="96" rx="10" class="fl-box"/><rect x="540" y="60" width="200" height="5" rx="2" style="fill:var(--green)"/><text x="640.0" y="90" class="fl-t" style="fill:var(--green)">已上架</text><text x="640.0" y="112" class="fl-s">全部門可使用（僅讀取）</text><text x="640.0" y="131" class="fl-s">自動綁定部門角色</text></g><g><rect x="280" y="250" width="200" height="96" rx="10" class="fl-box"/><rect x="280" y="250" width="200" height="5" rx="2" style="fill:var(--red)"/><text x="380.0" y="280" class="fl-t" style="fill:var(--red)">已退回</text><text x="380.0" y="302" class="fl-s">附上退回原因</text><text x="380.0" y="321" class="fl-s">組員修改後重新送出</text></g><line x1="222" y1="108" x2="276" y2="108" class="fl-a" marker-end="url(#fl-ah)"/><text x="249" y="98" class="fl-l">送出</text><line x1="482" y1="108" x2="536" y2="108" class="fl-a" marker-end="url(#fl-ah)"/><text x="509" y="98" class="fl-l">核准</text><path d="M340 58 C340 18, 160 18, 160 56" class="fl-a fl-dash" marker-end="url(#fl-ah)"/><text x="250" y="24" class="fl-l">撤回</text><line x1="345" y1="158" x2="345" y2="246" class="fl-a" marker-end="url(#fl-ah)"/><text x="335" y="206" class="fl-l" text-anchor="end">退回（必填原因）</text><line x1="415" y1="248" x2="415" y2="160" class="fl-a" marker-end="url(#fl-ah)"/><text x="425" y="206" class="fl-l" text-anchor="start">重新送出</text><path d="M462 158 V180 H636 V196" class="fl-a fl-dash" marker-end="url(#fl-ah)"/><g><rect x="516" y="200" width="240" height="146" rx="10" class="fl-box fl-note"/><text x="532" y="226" class="fl-t fl-left" style="fill:var(--text)">審核中由誰審？</text><text x="532" y="252" class="fl-s fl-left">平常 → 部門主管</text><text x="532" y="274" class="fl-s fl-left">排休 → 代理人</text><text x="532" y="296" class="fl-s fl-left">沒空 → 主管轉交其他管理職</text><text x="532" y="318" class="fl-s fl-left">逾 5 個工作天 → 系統改派其他管理職</text></g></svg>
+  </div>
+  <div class="card"><h2>各身分看到什麼</h2>
+    <table><thead><tr><th style="width:90px">身分</th><th>畫面</th><th>狀態</th></tr></thead><tbody>
+      <tr><td>組員</td><td>AI 助理列表新增「狀態」與「審核進度」；送出確認視窗寫清楚誰會審、審核時限、核准後誰看得到；退回時列表上方顯示原因；逾期前一天會收到預告</td><td>草稿 → 審核中 → 已上架／已退回</td></tr>
+      <tr><td>主管</td><td>通知與「AI 助理審核」頁；審核視窗可測試 AI 助理、看角色指令與測試次數，核准、退回（必填原因）或轉交；「排休與代理」設定；第 2 天提醒、第 4 天逾期預告</td><td>待審核 → 已審核</td></tr>
+      <tr><td>代理人</td><td>與主管相同的審核畫面，標示「代理林經理」與原因（排休、轉交或逾期改派），紀錄也會寫明是代理</td><td>只在被指派時出現</td></tr>
+      <tr><td>系統管理員</td><td>不需要額外操作。在既有的「角色權限 › 分配 AI 助理」可以看到核准後自動綁定的 AI 助理（只開讀取，標示核准人）；只在代理人遇到自己送出的項目等例外情況時處理審核</td><td>—</td></tr>
+      <tr><td>其他部門同事</td><td>看不到業務一部的 AI 助理，只看得到自己部門核准上架的</td><td>一直看不到</td></tr>
+      <tr><td>部門同事</td><td>Agent 市集出現新的 AI 助理，標示「新上架」、建立者與部門，並收到通知（核准者只記錄在審核紀錄，同事不需要知道）</td><td>看不到 → 看得到（僅讀取）</td></tr>
+    </tbody></table>
+  </div>
+  <div class="card"><h2>閱讀方式</h2><p style="margin:0">介面依平台現有架構繪製（側邊欄、頂部列、AI 助理列表、建立視窗、通知中心、角色權限頁）。<b>這次新增的部分：</b>AI 助理審核頁、列表的狀態與最後更新欄、建立視窗的用途說明與開放對象、AI 助理頁的狀態列與審核紀錄、通知中心的個人通知、帳號頁的排休與代理。側邊欄只列出這條流程用得到的項目；這也符合平台本身的行為：平台會依角色權限隱藏選單，部門角色只勾「AI 助理權限」與「Agent 市集權限」時，組員看到的就是這幾項。</p><p style="margin:10px 0 0"><b>怎麼操作原型：</b>畫面最上方的黑色列是原型控制。選「情境」會自動準備好那一段需要的資料（例如②會先完成①，並備好一個測試過的草稿）；左下角的導覽用 ‹ › 一步一步說明，要按的按鈕會發光，完成後顯示 ✓。「身分」可以隨時切換，自由查看任何人的畫面。</p></div>
+  <div class="card"><h2>平台現況：核准目前在平台外進行</h2>
+    <p style="margin:0 0 8px">依使用手冊〈角色權限規劃指南〉，平台目前要做到「建好的 AI 助理經核准才給部門用」，做法是：</p>
+    <ol style="margin:0 0 8px"><li>每位建構者一人一個角色，而且<b>不能隸屬部門角色</b>（否則可自行綁定，不需核准）</li><li>申請與核准在<b>平台外</b>（表單或信件）進行</li><li>核准後由擁有者手動<b>複製一份</b>、改綁部門角色，再到角色頁取消編輯與刪除，只留讀取</li></ol>
+    <p style="margin:0">手冊列出「兩個一定要做對的動作」與「六個常見誤區」，代表手動流程容易出錯，而且主管、組員都看不到進度。<b>這次的設計就是把這段流程搬進平台：</b>主管在平台內核准，系統自動完成「複製一份、綁定部門角色、只開讀取」，每一步都有紀錄。</p>
+  </div>
+  <div class="card"><h2>取捨理由</h2><ol>
+    <li><b>核准＝系統自動完成手冊裡的上架動作。</b>平台的可見性只看「AI 助理綁到哪個角色」，所以不另外做一套權限。核准後系統照手冊建議的做法自動完成上架：複製一份上架版、綁定部門角色、只開讀取。改動最小，也不會跟現有的角色設定衝突；上架後如何改版不在本題範圍。</li>
+    <li><b>「建立」和「送出」分開，建立視窗不放「直接送出審核」。</b>按鈕寫「建立草稿」，建立後直接進入該 AI 助理頁，右側就是測試對話，可以邊調邊測，確認後再「送出審核」。剛建立時只有基本資料、還沒測試，直接送審多半會被退回，徒增主管負擔；三個按鈕也會讓每次建立都多一個沒有意義的選擇。AI 助理通常要反覆調整知識庫和回答方式，不該一建立就進入審核。</li>
+    <li><b>草稿只有建立者看得到，送出後加上部門主管。</b>平台現在要靠「一人一個角色」做到，而且建構者不能隸屬部門角色，代價是建構者看不到部門的正式 AI 助理（手冊列為已知代價）。改由系統規則處理後，組員可以照常留在部門角色裡、使用部門的 AI 助理，半成品也不會被同事拿去用。</li>
+    <li><b>審核中鎖定編輯，但可以撤回。</b>確保主管核准的版本就是上架的版本。想再改就先撤回，比偷偷修改更清楚。</li>
+    <li><b>建立者在草稿階段就能測試，測試次數讓主管看到。</b>AI 助理頁右側常駐測試對話（沿用平台 Agent 頁的測試對話），改完設定馬上能問一句看效果，標示「只有你看得到」。送出時若還沒測試過，會提醒先測試；主管的審核視窗也會顯示「建立者測試 N 次」，作為判斷的參考。這是用提醒而不是強制，避免卡住真的很簡單的 AI 助理。</li>
+    <li><b>設定加入「角色指令」，主管審核時也看得到。</b>AI 助理怎麼回答主要由角色指令（prompt）決定。建立後在 AI 助理頁調整角色指令、儲存、在右側測試，形成「改 → 測 → 再改」的循環；審核中鎖定。主管的審核視窗顯示完整角色指令，因為語氣、能不能承諾交期或賠償，正是最容易出問題、主管最該把關的地方。建立視窗也有這個欄位但標示「選填」：已經想好的人可以直接填，還沒想好的人建立後再一邊測試一邊調整；建立與編輯的欄位一致，使用者不會疑惑欄位去哪了。編輯頁不用「編輯模式」：這頁的主要任務就是反覆修改，而且改了要儲存才生效，誤觸代價低（跟第一題權限勾了立即生效不同）。真正要防的是「改了沒存」：一改欄位，卡片底部就浮出固定的「有未儲存的變更［捨棄變更］［儲存變更］」；測試對話提醒「目前測試的是已儲存的版本」；未儲存就送審會先要求「儲存並送出」，確保主管審到最新版本。上架後再修改屬於改版，不在本題範圍。</li>
+    <li><b>主管可以直接測試。</b>AI 助理好不好要用過才知道，只看設定欄位判斷不了；送出時組員也可以附上測試說明，減少來回。</li>
+    <li><b>建立時選「開放對象」，取代平台原本的「權限設定」。</b>平台現在的建立視窗裡，「管理與進階 › 權限設定」提供「全部角色／排除預設角色／自訂選擇角色」三種範圍，建立者按下確認就直接生效，等於可以不經核准就開放給整個部門、甚至全組織（手冊因此要求建構者不能隸屬部門角色）。平台建立後的設定頁也一樣，建立者可以隨時把角色從「可選角色」移到「已選角色」並儲存，同樣不經核准。原型把它改成「開放對象」，建立與編輯時都不讓建立者自己分配角色：選項只列出自己隸屬的部門，而且<b>選了不會立刻生效</b>，要主管核准後才開放；其他部門或全公司不在選項內，需另外申請。組員一開始就知道做好會給誰用，送出審核時再確認一次。</li>
+    <li><b>主管不能調整「核准後誰可以用」。</b>規則是「組員做的東西，主管核准後給部門用」，所以範圍固定為建立者的部門、只開讀取。讓主管自己挑範圍，等於把權限設定交給每位主管，容易越開越大，也碰到題目排除的「其他權限」。要開放給其他部門或全公司，應該是另一層申請（手冊的「全公司級」上架），不在本題一層核准的範圍。主管若覺得範圍不對，可以退回並說明。</li>
+    <li><b>核准一鍵，退回是有意識的第二步。</b>審核視窗只有一個主要按鈕「核准並上架」；按「退回」才展開退回區塊（淡紅底、必填標示、常用原因快選），再按「確認退回」。退回原因不會在核准時佔版面，也避免主管誤按就退回。測試對話的「送出」改成次要按鈕，不跟「核准並上架」搶注意力。</li>
+    <li><b>退回必填原因，提供常用原因快選。</b>組員知道要改什麼；主管不用每次從頭打字。</li>
+    <li><b>主管不在或沒空：代理人優先，逾期改派給部門其他管理職。</b>參考一般企業簽核的做法，分三層：第一層，<b>事先排休</b>時在排休視窗選代理人：選單列出部門所有成員，但只有管理職可以選，一般組員不能代理，避免組員互審；第二層，<b>主管在但沒空</b>，可以在審核視窗按「轉交審核」，選部門裡的其他管理職；第三層，<b>臨時病假、來不及處理</b>，靠時限保底：第 2 個工作天提醒主管、第 4 天同時通知主管和建立者「明天逾期將改派給誰」、第 5 天系統依「部門管理職名單」的順序改派給其他管理職，三方都會收到通知。改派對象留在業務部門，因為系統管理員不懂業務內容，不該替部門判斷 AI 助理能不能上架；系統管理員只處理例外（例如代理人自己送出的項目）。AI 助理上架不是急件，所以時限用一週而不是兩天，避免主管只是出差幾天就被系統架空。</li>
+    <li><b>主管排休沿用平台既有的「我的排休」，放在「帳號」頁。</b>平台的真人客服已經有「我的排休」：設定休假區間，期間內不派工，結束後自動恢復，狀態顯示「排休中（至結束時間）」。審核代理沿用同樣的用詞和行為，只多一個「代理人」欄位，並列出交接事項。位置放在右上角頭像 › 帳號 › 目前組織，因為代理人只在目前組織有效，跟同一組的 Credit 額度、API 金鑰一樣屬於「我在這個組織的設定」。用期間而不用開關，是因為排休通常事先安排，到期自動恢復就不必記得關掉；臨時提早回來可以「提前結束排休」。若公司的請假系統可以串接，排休期間可自動帶入。</li>
+    <li><b>狀態透明。</b>組員隨時看得到卡在誰手上、等了幾天，不必私下去問；每一步都記錄是誰、是否代理。</li>
+    <li><b>個人通知與公告分開。</b>現有通知中心只有系統公告和組織公告，審核需要的是「給特定人」的通知，所以另外放在鈴鐺的「個人通知」分頁。</li>
+    <li><b>「編輯」與「審核紀錄」整合成一個 AI 助理頁。</b>對組員來說，設定和審核紀錄是同一個 AI 助理的兩面，不該拆成兩個入口。列表點整列進入 AI 助理頁（延伸平台既有的設定頁），頂部狀態列說明現況和下一步。左邊用分頁切換「設定」與「審核紀錄」，右邊是常駐的測試對話；標題列、狀態列與右上角的主要按鈕固定在頂部，捲到哪裡都看得到下一步。審核中與已上架時設定鎖定為唯讀，狀態列直接說明原因，讓「審核中鎖定編輯」這條規則看得見。列表每列只留一個依狀態決定的按鈕（送出審核、撤回、修改、開始對話）。整列只有一個目的地，點偏了也只是進入 AI 助理頁，不會誤觸動作；點擊範圍大，對每天處理很多事的業助更快。</li>
+    <li><b>列表只依「最後更新」排序，預設新到舊。</b>組員自己的列表筆數不多，排序的用處是把有變化的放到最上面：剛被退回、剛核准的會浮到最上面，一打開就看得到。名稱、狀態等欄位先不加排序，狀態已有篩選可用；之後項目變多再評估。</li>
+    <li><b>列表的 ID 移到名稱下方。</b>業務人員靠名稱找 AI 助理，ID 只在回報問題或跟系統管理員溝通時才用得到。把 ID 縮成名稱下方的小字，名稱變成第一欄，狀態緊接在旁邊，視線從左到右就是「哪一個 → 現在怎樣」。這是對平台既有列表的小調整，搜尋框仍可用 ID 搜尋。</li>
+    <li><b>設定只保留審核者判斷需要的欄位。</b>實際的 AI 助理設定還有頭像、開場白、建議問題、工具串接等十幾項，但這題考的是「送出到同事看到」的流程，所以只留主管審核時要看的：用途說明（做什麼）、角色指令（怎麼回答）、知識庫（讀得到哪些資料，最大的外洩風險）、開放對象（給誰用）、模型與回答模式（成本與行為），加上名稱。其他設定沿用平台現有的設定頁，不在本題範圍。</li>
+    <li><b>建立視窗不放平台的設定分類選單。</b>平台的 AI 助理設定有十幾項，才需要左側分類導覽；這題只有上述幾個欄位。保留導覽會讓一半是灰色不能用的項目，反而搶走「用途說明」「開放對象」這兩個跟審核有關的重點。右側區塊標題沿用平台的分類名稱，並註明其他設定沿用平台。</li>
+    <li><b>介面上一律寫「AI 助理」，不單寫「助理」。</b>製造業裡的「助理」通常指業務助理（人），寫成「助理會鎖定」容易被誤會成某位同事；提到特定項目時直接寫出名稱，例如「客訴回覆助理」。</li>
+  </ol>
+  <h3>觀察到、但刻意不改的平台問題</h3><ul>
+    <li><b>Agent 市集的「檢視最愛」只在「組織自建」分頁。</b>最愛是使用者自己的清單，使用者不會先想「它是官方還是自建」，最愛應該跨來源、放在分頁的上一層。但這是市集既有的資訊架構，跟本題的核准流程無關，改它會偏離「參考平台架構」，所以原型不放最愛功能，建議另案處理。</li>
+  </ul>
+  <h3>假設與不在範圍內</h3><ul>
+    <li>每個部門角色已標記一位主管（題目說明已設定好，本原型不設計設定方式）。</li>
+    <li>每個部門也已標記哪些人是「管理職」（例如副理、組長），可以擔任代理人或被轉交、改派；名單的順序就是逾期改派的順序。跟主管一樣由系統管理員在部門角色設定，不涉及上下級關係，本原型不設計設定方式。</li>
+    <li>只有一層核准；改版後是否重新核准、多層簽核、部門與上下級設定不在本題範圍。</li>
+    <li>第 2／4／5 個工作天的提醒、預告與改派時限為初始值，實際應依公司審核習慣調整。</li>
+    <li>知識庫由平台既有的「知識庫」頁面建立與管理；建立 AI 助理時的選單只列出組員已有權限使用的知識庫，找不到時從選單底部「前往新增知識庫」過去。知識庫本身的權限與審核屬於「其他權限」，不在本題範圍。</li>
+    <li>Agent 市集的「開始對話」在原型以懸浮視窗示意，可同時開多個 AI 助理並用分頁切換；實際沿用平台既有的對話功能，對話會保存在對話清單，來源標示為「內部」。</li>
+  </ul></div>
+  </div>`;
+}
+
+/* ---------- 視窗 ---------- */
+function mh(title,sub='',extra=''){return `<div class="m-h"><div style="flex:1;min-width:0"><div>${title}</div>${sub?`<div class="m-sub">${sub}</div>`:''}</div>${extra}<button class="icon-btn" data-act="close" aria-label="關閉">✕</button></div>`}
+function mConfirm(){
+  const m=UI.modal;
+  return `<div class="mask" data-act="close"><div class="modal" style="width:min(440px,100%)">
+    ${mh(esc(m.title))}
+    <div class="m-b">${esc(m.text)}</div>
+    <div class="m-f"><button class="btn" data-act="close">取消</button><button class="btn ${m.danger?'danger-fill':'primary'}" data-act="${m.then}">${esc(m.ok)}</button></div>
+  </div></div>`;
+}
+function mCreate(){
+  return `<div class="mask" data-act="close"><div class="modal">
+    ${mh('建立 AI 助理')}
+    <div class="m-b">
+      <div class="c-main" id="c-main">
+        <section id="sec-basic"><h4 class="c-h">基本設定</h4>
+          <label class="f" style="margin-top:0"><span style="color:var(--red)">*</span> 名稱</label><input type="text" id="cr-name" placeholder="請輸入" value="${prefillCreate()?DEMO_A.name:''}">
+          <label class="f"><span style="color:var(--red)">*</span> LLM 模型</label><select class="inp" id="cr-model"><option>GPT-5.6 Luna</option><option>Claude Sonnet 5.5</option><option>Gemini 3 Pro</option></select>
+          <label class="f"><span style="color:var(--red)">*</span> 用途說明</label><input type="text" id="cr-desc" placeholder="這個 AI 助理幫同事做什麼（審核時給主管看）" value="${prefillCreate()?DEMO_A.desc:''}">
+        </section>
+        <section id="sec-mode"><h4 class="c-h">回答模式設定</h4>
+          <label class="f" style="margin-top:0"><span style="color:var(--red)">*</span> 回答模式 ${MODE_HELP}</label><select class="inp" id="cr-mode">${MODES.map(m=>`<option>${m}</option>`).join('')}</select>
+        </section>
+        <section id="sec-prompt"><h4 class="c-h">角色指令 <span class="opt">選填</span></h4>
+          <textarea id="cr-prompt" rows="3" placeholder="告訴 AI 助理它是誰、要怎麼回答、哪些事不能做。還沒想好可以先空著，建立後一邊測試一邊調整。">${prefillCreate()?esc(DEMO_A.prompt):''}</textarea>
+        </section>
+        <section id="sec-kb"><h4 class="c-h">知識庫設定</h4>
+          <label class="f" style="margin-top:0"><span style="color:var(--red)">*</span> 知識庫 <span class="opt">可選多個</span></label>${kbPicker('cr',UI.crKb||[],false)}
+        </section>
+        <section id="sec-scope"><h4 class="c-h">開放對象</h4>
+          <label class="f" style="margin-top:0" for="cr-scope"><span style="color:var(--red)">*</span> 開放範圍</label><select class="inp" id="cr-scope"><option value="dept" selected>${DEPT.name}（部門全體，僅讀取）</option><option disabled>全公司（需另外申請）</option></select>
+          <div class="sub" style="margin-top:4px">送出審核後主管才看得到；核准後系統會把這個 AI 助理分配給「${DEPT.name}」角色（僅讀取），部門同事就能使用。</div>
+        </section>
+        <p class="sub c-note">頭像、開場白、工具、對話平台等其他設定沿用平台現有的設定頁，原型省略。</p>
+      </div>
+    </div>
+    <div class="m-f"><span class="sub" style="margin-right:auto">建立後可以先調整、測試，再送出審核</span><button class="btn" data-act="close">取消</button><button class="btn primary" data-act="doCreate">建立草稿</button></div>
+  </div></div>`;
+}
+function mLeave(){
+  const L={...(S.leave||{from:isoDay(),to:isoDay(6)})};L.delegate=L.delegate||REVIEWERS[0];
+  return `<div class="mask" data-act="close"><div class="modal">
+    ${mh(S.leave?'修改排休':'新增排休')}
+    <div class="m-b">
+      <div class="row-flex">
+        <div style="flex:1"><label class="f" style="margin-top:0"><span style="color:var(--red)">*</span> 開始</label><input type="date" id="lv-from" value="${L.from}"></div>
+        <div style="flex:1"><label class="f" style="margin-top:0"><span style="color:var(--red)">*</span> 結束</label><input type="date" id="lv-to" value="${L.to}"></div>
+      </div>
+      <label class="f" for="lv-del"><span style="color:var(--red)">*</span> 代理人</label>
+      <select class="inp" id="lv-del">${DEPT_MEMBERS.filter(p=>p!=='manager').map(p=>{const ok=REVIEWERS.includes(p);return `<option value="${p}" ${ok?'':'disabled'} ${L.delegate===p?'selected':''}>${P(p).name}（${P(p).role}）${ok?'':'・組員不能擔任代理人'}</option>`}).join('')}</select>
+      <div class="info" style="margin-top:12px">代理人只處理你的待辦，不處理他自己提出的項目（改由系統管理員處理）；排休結束自動收回權限。</div>
+    </div>
+    <div class="m-f"><button class="btn" data-act="close">取消</button><button class="btn primary" data-act="doLeave">儲存</button></div>
+  </div></div>`;
+}
+function mSubmit(a){
+  return `<div class="mask" data-act="close"><div class="modal">
+    ${mh('送出審核',esc(a.name))}
+    <div class="m-b">
+      <dl class="kv">
+        <dt>審核人</dt><dd>${(()=>{const t={...a,status:'pending'};const r=reviewerOf(t);return esc(nm(r.id))+(r.acting?'（代理林經理）':'')})()}</dd>
+        <dt>審核時限</dt><dd>${EXPIRE} 個工作天<div class="sub">第 ${REMIND} 天提醒審核人；第 ${WARN} 天會先通知你和審核人；逾期由系統改派給部門其他管理職</div></dd>
+        <dt>開放對象</dt><dd>全${DEPT.name}（僅讀取）・主管核准後生效</dd>
+        <dt>審核期間</dt><dd>僅你和主管可見，無法編輯（撤回後可修改）</dd>
+      </dl>
+      ${a.tests?`<div class="sub" style="margin-top:10px">你已測試 ${a.tests} 次，測試次數會讓主管看到。</div>`:`<div class="warn warn-row" style="margin-top:12px">你還沒測試過這個 AI 助理。建議先測試，確認回答沒問題再送出，比較不會被退回。 <button class="btn sm-btn" data-act="testFirst" data-id="${a.id}">先去測試</button></div>`}
+      <label class="f">給主管的說明（選填）</label>
+      <textarea id="sub-note" rows="3" placeholder="例如：用途、測試過哪些問題、希望何時上線"></textarea>
+    </div>
+    <div class="m-f"><button class="btn" data-act="close">取消</button><button class="btn primary" data-act="doSubmit" data-id="${a.id}">送出審核</button></div>
+  </div></div>`;
+}
+function mHandoff(a){
+  const opts=REVIEWERS.filter(p=>canTake(a,p)), def=opts[0];
+  return `<div class="mask" data-act="close"><div class="modal">
+    ${mh('轉交審核',esc(a.name))}
+    <div class="m-b">
+      <label class="f" style="margin-top:0" for="ho-to"><span style="color:var(--red)">*</span> 轉交給</label>
+      <select class="inp" id="ho-to">${opts.map(p=>`<option value="${p}" ${p===def?'selected':''}>${P(p).name}（${P(p).role}）</option>`).join('')}</select>
+      <div class="sub" style="margin-top:4px">只列出部門裡的管理職，建立者本人不會出現在選項中。</div>
+      <div class="info" style="margin-top:12px">轉交後由對方代理你審核，審核紀錄會註明是代理；對方與建立者都會收到通知。</div>
+    </div>
+    <div class="m-f"><button class="btn" data-act="backReview" data-id="${a.id}">返回審核</button><button class="btn primary" data-act="handoff" data-id="${a.id}">確認轉交</button></div>
+  </div></div>`;
+}
+function mReview(a){
+  const r=reviewerOf(a), rj=UI.rejecting;
+  const reasons=['回答內容需要再確認','知識庫資料不是最新版本','名稱或用途說明不清楚'];
+  // 退回原因只在按下「退回」後展開：核准是一鍵，退回是有意識的第二步
+  const rejectPanel=rj?`<div class="reject-box">
+      <div class="rb-h">退回原因 <span class="req">必填</span></div>
+      <div class="sub" style="margin-bottom:6px">常用原因，點選後可再補充</div>
+      <div class="chips" style="margin:0 0 8px">${reasons.map(c=>`<button class="chip" data-act="chip" data-v="${c}">${c}</button>`).join('')}</div>
+      <textarea id="rej-reason" rows="3" placeholder="讓建立者知道要改什麼，例如哪一題回答不正確">${esc(UI.rejText||'')}</textarea>
+    </div>`:'';
+  return `<div class="mask" data-act="close"><div class="modal wide">
+    ${mh('審核 AI 助理',`${esc(a.name)}・${esc(P(a.owner).name)} 送出`,r.acting?'<span class="badge b-acting">代理林經理</span>':'')}
+    <div class="m-b two">
+      <div>
+        <dl class="kv">
+          <dt>建立者</dt><dd>${esc(P(a.owner).name)}（${DEPT.name}）</dd>
+          <dt>送出時間</dt><dd>${esc(a.submittedAt)}</dd>
+          <dt>用途</dt><dd>${esc(a.desc)}</dd>
+          <dt>模型</dt><dd>${esc(a.model)}・${esc(a.mode||MODES[0])}</dd>
+          <dt>知識庫</dt><dd>${esc(a.kb)}</dd>
+          <dt>角色指令</dt><dd>${a.prompt?`<div class="prompt-box">${esc(a.prompt)}</div>`:'<span style="color:var(--orange)">未填寫</span>'}</dd>
+          <dt>建立者測試</dt><dd>${a.tests?`${a.tests} 次`:'<span style="color:var(--orange)">未測試</span>'}</dd>
+          <dt>送出說明</dt><dd>${a.note?esc(a.note):'<span class="sub">（未填寫）</span>'}</dd>
+          <dt>核准後</dt><dd>全${DEPT.name}可使用（僅讀取）<div class="sub">開放範圍固定為部門；要開放給其他部門或全公司需另外申請</div></dd>
+        </dl>
+        ${rejectPanel}
+      </div>
+      <div>
+        <div class="sub" style="margin-bottom:6px">先測試再決定（不會留下對話紀錄）</div>
+        <div class="chat"><div class="log" id="chatlog">${UI.chat.length?UI.chat.map(m=>`<div class="msg ${m.r}">${esc(m.t)}</div>`).join(''):'<div class="sub" style="margin:auto">輸入一個問題，試試它的回答</div>'}</div>
+        <form data-act="chat"><input type="text" id="chat-in" placeholder="輸入問題，Enter 送出" style="flex:1"><button class="btn">送出</button></form></div>
+      </div>
+    </div>
+    <div class="m-f">${rj
+      ?`<span class="sub" style="margin-right:auto">退回後會通知${esc(P(a.owner).name)}，並附上原因</span>
+        <button class="btn" data-act="cancelReject">返回審核</button>
+        <button class="btn danger-fill" data-act="doReject" data-id="${a.id}">確認退回</button>`
+      :`${S.me==='manager'&&r.id==='manager'&&REVIEWERS.some(p=>canTake(a,p))?`<button class="btn" style="margin-right:auto" data-act="openHandoff" data-id="${a.id}">轉交審核</button>`:`<span class="sub" style="margin-right:auto">核准或退回都會通知建立者，並記錄在審核紀錄</span>`}
+        <button class="btn danger" data-act="startReject">退回</button>
+        <button class="btn primary" data-act="doApprove" data-id="${a.id}">核准並上架</button>`}</div>
+  </div></div>`;
+}
+function dDetail(a){
+  return `<div class="drawer-mask" data-act="close"><aside class="drawer">
+    <div class="m-h"><div style="flex:1;min-width:0"><div>審核紀錄</div><div class="m-sub">${esc(a.name)}</div></div>${badge(a.status)}<button class="icon-btn" data-act="close" aria-label="關閉">✕</button></div>
+    <div class="m-b">
+      <dl class="kv"><dt>建立者</dt><dd>${esc(P(a.owner).name)}</dd><dt>用途</dt><dd>${esc(a.desc)}</dd><dt>知識庫</dt><dd>${esc(a.kb)}</dd><dt>目前進度</dt><dd>${esc(progressText(a))}</dd>
+      <dt>誰看得到</dt><dd>${a.status==='approved'?`${DEPT.name}全體（讀取）`:a.status==='draft'?'只有建立者':'建立者與審核人'}</dd></dl>
+      <h3 style="font-size:14px;margin:20px 0 10px">審核紀錄</h3>
+      <ul class="timeline">${a.history.slice().reverse().map(h=>`<li><div>${esc(h.text)}</div><div class="t">${esc(h.t)}</div></li>`).join('')}</ul>
+      ${a.owner===S.me?`<div class="actions" style="margin-top:12px">${rowActions(a)}</div>`:''}
+    </div></aside></div>`;
+}
+function notifPanel(){
+  const mine=S.notes.filter(n=>n.to===S.me);
+  const unread=mine.filter(n=>!n.read).length;
+  const tab=(k,t)=>`<button class="tab ${UI.ntab===k?'on':''}" data-act="ntab" data-v="${k}">${t}</button>`;
+  let body;
+  if(UI.ntab==='todo')body=mine.length?mine.slice(0,8).map(n=>`<button class="nitem ${n.read?'':'unread'}" data-act="note" data-i="${S.notes.indexOf(n)}"><div>${esc(n.text)}</div><div class="t">${esc(n.t)}</div></button>`).join(''):'<div class="empty">沒有通知</div>';
+  else if(UI.ntab==='sys')body=SYS_NOTES.map(([t,d])=>`<div class="nitem"><div>${t}</div><div class="t">${d}</div></div>`).join('');
+  else body='<div class="empty">暫無公告</div>';
+  return `<div class="npanel"><div class="nh">通知中心</div>
+    <div class="tabs" style="padding:0 12px;margin:0">${tab('todo',`個人通知${unread?`（${unread}）`:''}`)}${tab('sys','系統公告 (6)')}${tab('org','組織公告')}</div>
+    ${body}
+  </div>`;
+}
+function floatChat(){
+  const f=UI.float;if(f)f.chats=f.chats.filter(x=>{const b=byId(x.id);return b&&(b.owner===S.me||S.me==='owner'||visibleInMarket(b)&&deptOf(b)===myDept())});if(!f||!f.chats.length)return '';const c=f.chats.find(x=>x.id===f.active)||f.chats[0];const a=byId(c.id);if(!a)return '';
+  const tabs=f.chats.length>1?`<div class="f-tabs" role="tablist">${f.chats.map(x=>{const b=byId(x.id);return `<div class="f-tab ${x.id===c.id?'on':''}" role="tab" aria-selected="${x.id===c.id}"><button class="f-tab-b" data-act="ftab" data-id="${x.id}" title="${esc(b.name)}"><span class="ic xs">${esc(b.name[0])}</span><span class="f-tab-n">${esc(b.name)}</span></button><button class="f-tab-x" data-act="fclose" data-id="${x.id}" aria-label="關閉與 ${esc(b.name)} 的對話">✕</button></div>`}).join('')}</div>`:'';
+  return `<section class="float ${f.min?'min':''}" aria-label="AI 助理對話">
+    <div class="f-h"><span class="ic sm">${esc(a.name[0])}</span><div style="flex:1;min-width:0"><div class="name">${esc(a.name)}</div><div class="sub">${a.status==="approved"?`${esc(P(a.owner).name)} 建立・${deptOf(a)}`:"測試模式・只有你看得到"}${f.chats.length>1?`・共 ${f.chats.length} 個對話`:''}</div></div>
+      <button class="icon-btn" data-act="fmin" title="${f.min?'展開':'縮小'}">${f.min?'▴':'▾'}</button><button class="icon-btn" data-act="fcloseAll" title="${f.chats.length>1?'關閉全部對話':'關閉'}">✕</button></div>
+    ${f.min?'':`${tabs}<div class="log" id="flog">${c.msgs.map(m=>`<div class="msg ${m.r}">${esc(m.t)}</div>`).join('')}</div>
+    <form class="f-in" data-act="fchat"><input type="text" id="f-in" placeholder="輸入訊息，Enter 送出" autocomplete="off"><button class="btn primary">送出</button></form>`}
+  </section>`;
+}
+function userMenu(){
+  return `<div class="umenu">
+    <button class="nitem" ${S.me==='manager'?'data-act="go" data-v="leave"':'data-act="toast" data-msg="原型只示範主管的排休與代理"'}>帳號${S.me==='manager'?'<span class="sub">　› 排休與代理</span>':''}</button>
+    <button class="nitem" data-act="toast" data-msg="原型未包含此功能">登出</button>
+  </div>`;
+}
+function render(){
+  if(!allowed(S.view))S.view=HOME[S.me];
+  const view={agent:vAgent,agents:vAgents,review:vReview,market:vMarket,leave:vLeave,roles:vRoles,doc:vDoc}[S.view]();
+  let overlay='';
+  if(UI.modal){const t=UI.modal.type,a=byId(UI.modal.id);overlay=t==='confirm'?mConfirm():t==='submit'?mSubmit(a):t==='review'?mReview(a):t==='create'?mCreate():t==='handoff'?mHandoff(a):mLeave()}
+  if(UI.drawer)overlay=dDetail(byId(UI.drawer));
+  const ae=document.activeElement, keep=ae&&ae.id&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')?{id:ae.id,v:ae.value,a:ae.selectionStart,b:ae.selectionEnd}:null;
+  const drafts={};document.querySelectorAll('#root input[id],#root textarea[id],#root .modal select[id]').forEach(el=>{if(el.type!=='checkbox'&&el.type!=='date')drafts[el.id]=el.value});
+  document.getElementById('root').innerHTML=`<div class="app">${header()}${sidebar()}<main class="main">${view}</main></div>
+    ${UI.notif?notifPanel():''}${UI.umenu?userMenu():''}${floatChat()}${overlay}
+    ${S.tour.started?tourPanel():''}${S.tour.started?'':mWelcome()}
+    <div class="scen"><span class="proto-tag">原型控制</span>
+      <label class="sub" for="scen-sel">情境</label>
+      <select id="scen-sel" class="inp sm">${SCEN.map(x=>`<option value="${x.id}" ${x.id===S.tour.sc?'selected':''}>${x.name}</option>`).join('')}</select>
+      <label class="sub" for="who">身分</label>
+      <select id="who" class="inp sm" data-act="who">${WHO_GROUPS.map(([g,ids])=>`<optgroup label="${g}">${ids.map(k=>`<option value="${k}" ${k===S.me?'selected':''}>${P(k).name}（${WHO_LABEL[k]}）</option>`).join('')}</optgroup>`).join('')}</select>
+      <button class="btn" data-act="ff">快轉到下一個時間點</button><button class="btn" data-act="reset">重設</button></div>
+    ${UI.toast?`<div class="toast">${esc(UI.toast)}</div>`:''}`;
+  const log=document.getElementById('chatlog');if(log)log.scrollTop=log.scrollHeight;
+  const fl=document.getElementById('flog');if(fl)fl.scrollTop=fl.scrollHeight;
+  const tl=document.getElementById('tlog');if(tl)tl.scrollTop=tl.scrollHeight;
+  // AI 助理頁：標題列（含右上角主要按鈕）固定在頂部；測試對話固定在標題列下方、填滿剩下的高度
+  fitAgentPage();markTarget();fitModal();roleSwitchCue();autoAdvance();
+  // 只在同一個畫面重繪時保留輸入中的文字（例如提示訊息消失時）
+  if(UI._keepDrafts){for(const [id,v] of Object.entries(drafts)){const el=document.getElementById(id);if(el&&v&&(!el.value||el.tagName==='SELECT'))el.value=v}}
+  if(keep){const el=document.getElementById(keep.id);if(el){if(UI._keepDrafts&&!el.value)el.value=keep.v;el.focus();try{el.setSelectionRange(keep.a,keep.b)}catch(e){}}}
+  UI._keepDrafts=false;
+  save();
+}
+let tt;function toast(m){if(SILENT)return;UI.toast=m;const root=document.getElementById('root');if(root){let el=root.querySelector('.toast');if(!el){el=document.createElement('div');el.className='toast';root.appendChild(el)}el.textContent=m}clearTimeout(tt);tt=setTimeout(()=>{UI.toast=null;UI._keepDrafts=true;render()},2200)}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.kbp'))document.querySelectorAll('.kbp.open').forEach(x=>{x.classList.remove('open');x.querySelector('.kb-trigger')?.setAttribute('aria-expanded','false')});
+  if(e.target.closest('.kb-new')){toast('會在新分頁開啟平台的「知識庫」頁面（原型省略）');UI._keepDrafts=true;render();return}
+  if(e.target.closest('.kb-menu'))return;
+  if(e.target.closest('.help'))return;
+  const el=e.target.closest('[data-act]');
+  if(UI.notif&&!e.target.closest('.npanel')&&!(el&&el.dataset.act==='bell')){UI.notif=false;if(!el){render();return}}
+  if(UI.umenu&&!(el&&el.dataset.act==='umenu')){UI.umenu=false;if(!el){render();return}}
+  if(!el)return;
+  const {act,id,v}=el.dataset;
+  if(tourBlocks(act)&&!el.closest('.guide')){nudge(UI._gateMsg);UI._gateMsg=null;return}
+  switch(act){
+    case 'go':if(el.dataset.finish)S.tour.finished=true;S.view=v;UI.drawer=null;UI.role=false;if(v==='market')UI.mtab='self';break;
+    case 'bell':UI.notif=!UI.notif;UI.umenu=false;break;
+    case 'umenu':UI.umenu=!UI.umenu;UI.notif=false;break;
+    case 'ntab':UI.ntab=v;return render();
+    case 'roleOpen':UI.role=true;UI.roleTab='分配 AI 助理';break;
+    case 'roleTab':UI.roleTab=v;break;
+    case 'openAgent':if(+id!==S.agentId)UI.edit=null;S.agentId=+id;S.view='agent';UI.atab='settings';UI.drawer=null;break;
+    case 'atab':UI.atab=v;break;
+    case 'lockedHint':{const a=byId(id);
+      toast(a.owner!==S.me?'只有建立者可以修改這個 AI 助理':a.status==='pending'?'審核中無法修改，請先按右上角的「撤回」':'已上架的版本不能直接修改');
+      render();const b=document.getElementById('hdr-act')||document.querySelector('.banner');if(b)b.classList.add('pulse');return}
+    case 'copyId':{const fallback=()=>{const t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(e){}t.remove()};
+      try{navigator.clipboard.writeText(v).catch(fallback)}catch(e){fallback()}toast('已複製 ID');break}
+    case 'secGoUnused':{UI.sec=v;document.querySelectorAll('.c-side .c-i[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===v));document.getElementById(v)?.scrollIntoView({behavior:'smooth',block:'start'});return}
+    case 'sort':UI.sort={key:'updated',dir:UI.sort.dir==='asc'?'desc':'asc'};break;
+    case 'saveAgent':{const a=byId(id),n=ev(a,'name').trim();const err=!n?'請填寫名稱':!ev(a,'desc').trim()?'請填寫用途說明':!kbList(ev(a,'kb')).length?'請至少選擇一個知識庫':'';if(err){toast(err);render();return}A.saveAgent(id,n,ev(a,'desc').trim(),ev(a,'kb').trim(),ev(a,'prompt').trim(),ev(a,'mode'));UI.edit=null;if(UI.then==='submit'){UI.then=null;UI.modal={type:'submit',id:+id}}break}
+    case 'kbDel':setKb(el.dataset.p,getKb(el.dataset.p).filter(k=>k!==el.dataset.v));return;
+    case 'kbOpen':{const b=el.closest('.kbp');b.classList.toggle('open');el.setAttribute('aria-expanded',b.classList.contains('open'));return}
+    case 'discardEdit':UI.edit=null;toast('已捨棄變更');break;
+    case 'saveAndSubmit':UI.modal=null;UI.then='submit';document.querySelector('[data-act=saveAgent]')?.click();return;
+    case 'mtab':UI.mtab=v;UI.favOnly=false;break;
+    case 'favOnly':UI.favOnly=!UI.favOnly;break;
+    case 'fav':{const f=S.fav[S.me]=S.fav[S.me]||[];const k=f.indexOf(+id);k<0?f.push(+id):f.splice(k,1);toast(k<0?'已加入最愛':'已移除最愛');break}
+    case 'goCreate':S.view='agents';UI.modal={type:'create'};UI.crKb=[];break;
+    case 'mq':return;
+    case 'tourMin':S.tour.min=!S.tour.min;break;
+    case 'tourStart':startScenario('A');S.tour.started=true;break;
+    case 'tourFreeNow':S.tour.min=true;break;
+    case 'tourFree':S.tour.started=true;S.tour.min=true;break;
+    case 'tourPrev':goStep((S.tour.k||0)-1);break;
+    case 'tourNext':goStep((S.tour.k||0)+1);break;
+    case 'tourAuto':{const sc=curScen(),k=S.tour.k||0;SILENT=true;try{sc.steps.slice(0,k).forEach(p=>{if(!p.done()&&p.auto)p.auto()})}finally{SILENT=false}goStep(k);toast('已完成前面的步驟');break}
+    case 'scenGo':startScenario(v);toast(`已切換到情境${curScen().name}，資料已準備好`);break;
+    case 'chatOpen':{const a=byId(id);if(!UI.float)UI.float={chats:[],active:null,min:false};const f=UI.float;
+      if(!f.chats.some(x=>x.id===a.id)){if(f.chats.length>=4){f.chats.shift();toast('最多同時開 4 個對話，已關閉最早的一個')}f.chats.push({id:a.id,msgs:[{r:'a',t:`你好，我是「${a.name}」。${a.desc}`}]})}
+      f.active=a.id;f.min=false;UI.drawer=null;S.tour.chatted=true;S.opened=S.opened||{};(S.opened[S.me]=S.opened[S.me]||[]).includes(a.id)||S.opened[S.me].push(a.id);render();document.getElementById('f-in')?.focus();return}
+    case 'ftab':UI.float.active=+id;render();document.getElementById('f-in')?.focus();return;
+    case 'fclose':{const f=UI.float;f.chats=f.chats.filter(x=>x.id!==+id);if(!f.chats.length)UI.float=null;else if(f.active===+id)f.active=f.chats[f.chats.length-1].id;break}
+    case 'fcloseAll':UI.float=null;break;
+    case 'testFirst':{UI.modal=null;S.agentId=+id;S.view='agent';render();document.getElementById('t-in')?.focus();return}
+    case 'fmin':UI.float.min=!UI.float.min;break;
+    case 'roleBack':UI.role=false;break;
+    case 'clearFilter':UI.filter='';UI.aq='';break;
+    case 'note':{const n=S.notes[+el.dataset.i];n.read=true;UI.notif=false;if(n.view&&allowed(n.view))S.view=n.view;break}
+    case 'rtab':UI.rtab=v;break;
+    case 'detail':UI.drawer=+id;break;
+    case 'close':if((el.classList.contains('mask')||el.classList.contains('drawer-mask'))&&e.target!==el)return;if(UI.modal&&UI.modal.type==='review')toast('尚未審核，仍保留在待審核清單');UI.modal=null;UI.drawer=null;UI.chat=[];break;
+    case 'openSubmit':UI.drawer=null;if(S.view==='agent'&&isDirty()){UI.modal={type:'confirm',title:'有未儲存的變更',text:'送出前要先儲存，主管才會審到最新的設定。',ok:'儲存並送出',then:'saveAndSubmit'};break}UI.modal={type:'submit',id:+id};break;
+    case 'doSubmit':A.submit(id,document.getElementById('sub-note').value.trim());UI.modal=null;break;
+    case 'withdraw':A.withdraw(id);UI.drawer=null;if(S.view==='agent')UI.atab='settings';break;
+    case 'openReview':UI.modal={type:'review',id:+id};UI.chat=[];UI.rejecting=false;break;
+    case 'chip':{const t=document.getElementById('rej-reason');t.value=t.value.trim()?t.value.trim()+'；'+v:v;t.focus();markTarget();return}
+    case 'startReject':UI.rejecting=true;UI.rejText='';render();document.getElementById('rej-reason')?.focus({preventScroll:true});document.querySelector('.reject-box')?.scrollIntoView({block:'end'});fitModal();return;
+    case 'cancelReject':UI.rejecting=false;break;
+    case 'doApprove':A.approve(id);UI.modal=null;UI.chat=[];break;
+    case 'doReject':{const r=document.getElementById('rej-reason');if(!r.value.trim()){r.focus();r.style.borderColor='var(--red)';r.placeholder='請填寫退回原因，讓建立者知道要改什麼';return}A.reject(id,r.value.trim());UI.modal=null;UI.chat=[];UI.rejecting=false;break}
+    case 'openCreate':UI.modal={type:'create'};UI.crKb=prefillCreate()?[...DEMO_A.kb]:[];UI.sec='sec-basic';break;
+    case 'doCreate':{const miss=['cr-name','cr-desc'].filter(id=>!document.getElementById(id).value.trim());const noKb=!(UI.crKb||[]).length;
+      if(miss.length||noKb){toast(miss.length?'請填寫必填欄位':'請至少選擇一個知識庫');UI._keepDrafts=true;render();
+        miss.forEach(id=>document.getElementById(id).style.borderColor='var(--red)');const kbBox=document.querySelector('#cr-kbp .kb-trigger');if(noKb&&kbBox)kbBox.style.borderColor='var(--red)';
+        const f=miss[0]?document.getElementById(miss[0]):kbBox;f?.scrollIntoView({block:'center'});f?.focus();return}setTimeout(()=>document.getElementById('t-in')?.focus(),0);const n=document.getElementById('cr-name');A.create(n.value.trim(),document.getElementById('cr-desc').value.trim(),document.getElementById('cr-model').value,UI.crKb.join('、'),document.getElementById('cr-prompt').value.trim(),document.getElementById('cr-mode').value);UI.modal=null;break}
+    case 'openLeave':UI.modal={type:'leave'};break;
+    case 'doLeave':{const f=document.getElementById('lv-from').value,t=document.getElementById('lv-to').value;if(!f||!t||t<f){toast('請確認排休期間');return}A.setLeave(f,t,document.getElementById('lv-del').value);UI.modal=null;break}
+    case 'endLeave':UI.modal=activeLeave()?{type:'confirm',title:'提前結束排休',text:'結束後，待辦會回到你手上，代理人的權限也會收回。',ok:'結束排休',then:'doEndLeave'}:{type:'confirm',title:'取消排休',text:'取消後，這段排休與代理人設定會刪除。',ok:'取消排休',then:'doEndLeave'};break;
+    case 'doEndLeave':UI.modal=null;A.endLeave();break;
+    case 'ff':A.fastForward();break;
+    case 'openHandoff':UI.modal={type:'handoff',id:+id};break;
+    case 'backReview':UI.modal={type:'review',id:+id};break;
+    case 'handoff':A.handoff(id,document.getElementById('ho-to').value);UI.modal=null;UI.chat=[];break;
+    case 'reset':UI.modal={type:'confirm',title:'重設原型',text:'會回到開始畫面，你建立的 AI 助理、排休設定和通知都會清除。',ok:'重設',danger:true,then:'doReset'};UI.notif=false;UI.umenu=false;break;
+    case 'doReset':startScenario('A');S.tour.min=false;S.tour.started=false;UI.modal=null;UI.drawer=null;UI.float=null;UI.tchat=null;UI.edit=null;UI.rtab='todo';UI.atab='settings';UI.filter='';UI.aq='';toast('已重設');break;
+    case 'toast':toast(el.dataset.msg);break;
+    case 'who':case 'chat':case 'tchat':case 'fchat':case 'filter':return; // 表單本身不是按鈕：點輸入框或送出鈕時不能重繪，否則送出會被打斷
+  }
+  render();
+});
+function markDirty(el){
+  const f={'ed-name':'name','ed-desc':'desc','ed-prompt':'prompt','ed-kb':'kb','ed-scope':'scope','ed-mode':'mode'}[el.id];if(!f)return;
+  if(!UI.edit||UI.edit.id!==S.agentId)UI.edit={id:S.agentId,v:{}};
+  UI.edit.v[f]=el.value;
+  ['dirty-bar','dirty-note'].forEach(id=>{const x=document.getElementById(id);if(x)x.hidden=false});
+  markTarget();
+}
+document.addEventListener('input',e=>{
+  if(e.target.id==='rej-reason')markTarget();
+  if(e.target.id&&e.target.id.startsWith('ed-')){markDirty(e.target);return}
+  const id=e.target.id;if(id!=='mq'&&id!=='aq')return;
+  UI[id]=e.target.value;const pos=e.target.selectionStart;render();
+  const el=document.getElementById(id);if(el){el.focus();el.setSelectionRange(pos,pos)}
+});
+document.addEventListener('keydown',e=>{
+  const t=e.target.closest&&e.target.closest('.kb-trigger[data-act]');
+  if(t&&(e.key==='Enter'||e.key===' ')){e.preventDefault();t.click()}
+  if(e.key==='Escape')document.querySelectorAll('.kbp.open').forEach(x=>x.classList.remove('open'));
+});
+document.addEventListener('scroll',e=>{placeTip();const m=e.target;if(m.classList&&m.classList.contains('m-b')){fitModal();return}if(m.classList&&m.classList.contains('main')){const ah=m.querySelector('.agent-top');if(ah)ah.classList.toggle('stuck',m.scrollTop>4)}},true);
+// 視窗內容太長時：標題與按鈕列固定，只捲中間；底部加陰影提示還有內容
+// 換身分時在畫面中央短暫顯示「現在是誰」，避免展示時沒注意到已經換人
+let lastMe=null,cueT;
+function roleSwitchCue(){
+  // 開啟原型、切換情境或重設時，第一步也要顯示目前身分
+  if(!S.tour.started){lastMe=null;return}
+  const force=UI._forceCue||(lastMe===null&&!S.tour.min);UI._forceCue=false;
+  if(!force&&(lastMe===null||lastMe===S.me)){lastMe=S.me;return}
+  lastMe=S.me;
+  document.getElementById('role-cue')?.remove();clearTimeout(cueT);
+  const p=P(S.me),d=document.createElement('div');d.id='role-cue';d.className='role-cue';d.setAttribute('role','status');
+  d.innerHTML=`<div class="rc-card"><span class="avatar rc-av" style="background:${p.color}">${esc(p.name[0])}</span><div><div class="rc-k">切換身分</div><div class="rc-n">${esc(p.name)}<span>（${esc(WHO_LABEL[S.me])}）</span></div><div class="rc-d">${esc(DEPT_OF[S.me]||'')}・接下來以${esc(p.name)}的畫面操作</div></div></div>`;
+  d.addEventListener('click',()=>d.remove());document.body.appendChild(d);
+  cueT=setTimeout(()=>{d.classList.add('out');setTimeout(()=>d.remove(),300)},3000);
+}
+function fitModal(){document.querySelectorAll('.modal').forEach(m=>{const b=m.querySelector('.m-b');if(b)m.classList.toggle('scrolly',b.scrollHeight-b.scrollTop>b.clientHeight+2)})}
+function fitAgentPage(){const top=document.querySelector('.agent-top'),tp=document.querySelector('.test-panel'),mn=document.querySelector('.main');
+  if(!top||!tp||!mn)return;if(getComputedStyle(tp).position!=='sticky'){tp.style.top='';tp.style.height='';return}
+  const h=top.offsetHeight-24;tp.style.top=h+'px';tp.style.height=Math.max(360,mn.clientHeight-h-56)+'px'}
+window.addEventListener('resize',()=>{fitAgentPage();fitModal();placeTip()});
+document.addEventListener('change',e=>{
+  if(e.target.id==='lv-del'&&e.target.value!=='deputy'&&!S.tour.min&&curScen().id==='C'&&!activeLeave()){e.target.value='deputy';nudge('示範流程請選王副理（實際可以選任何管理職）');return}
+  if(e.target.id==='scen-sel'){startScenario(e.target.value);toast(`已切換到情境${curScen().name}，資料已準備好`);render();return}
+  if(e.target.classList.contains('kb-cb')){const p=e.target.dataset.p;setKb(p,[...document.querySelectorAll(`#${p}-kbp .kb-cb:checked`)].map(c=>c.value));return}
+  if(e.target.id&&e.target.id.startsWith('ed-')){markDirty(e.target)}
+  if(e.target.dataset.act==='who'){S.me=e.target.value;S.view=myQueue().length?'review':HOME[S.me];UI.notif=false;UI.umenu=false;UI.modal=null;UI.drawer=null;UI.rtab='todo';UI.role=false;UI.filter='';UI.float=null;UI.edit=null;render()}
+  if(e.target.dataset.act==='filter'){UI.filter=e.target.value;render()}
+});
+document.addEventListener('submit',e=>{
+  if(e.target.dataset.act==='tchat'){
+    e.preventDefault();const inp=document.getElementById('t-in');const q=inp.value.trim();if(!q)return;
+    const a=byId(UI.tchat.id);
+    if(a.status!=='approved'&&a.owner===S.me)a.tests=(a.tests||0)+1;
+    UI.tchat.msgs.push({r:'u',t:q},{r:'a',t:`（示意回覆）已依「${a.kb}」查詢。實際會由「${a.name}」依知識庫內容回答。`});
+    render();document.getElementById('t-in')?.focus();return;
+  }
+  if(e.target.dataset.act==='fchat'){
+    e.preventDefault();const inp=document.getElementById('f-in');const q=inp.value.trim();if(!q)return;
+    const c=UI.float.chats.find(x=>x.id===UI.float.active)||UI.float.chats[0];const a=byId(c.id);
+    if(a.status!=='approved'&&a.owner===S.me)a.tests=(a.tests||0)+1;
+    c.msgs.push({r:'u',t:q},{r:'a',t:`（示意回覆）已依「${a.kb}」查詢。實際會由「${a.name}」依知識庫內容回答。`});
+    render();document.getElementById('f-in')?.focus();return;
+  }
+  if(e.target.dataset.act!=='chat')return;
+  e.preventDefault();
+  const inp=document.getElementById('chat-in');const q=inp.value.trim();if(!q)return;
+  const a=byId(UI.modal.id);
+  const rt=document.getElementById('rej-reason');if(rt)UI.rejText=rt.value;
+  UI.chat.push({r:'u',t:q});
+  UI.chat.push({r:'a',t:`（${a.name} 測試回覆）已依「${a.kb}」查詢：這是原型的示意回答，實際會由這個 AI 助理依知識庫內容回覆。`});
+  render();
+});
+render();
+</script>
+</body>
+</html>
