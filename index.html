@@ -519,6 +519,8 @@ const editedAfterReject=a=>{if(!a)return false;const h=a.history;const i=h.map(x
 const prefillTest=()=>!S.tour.min&&S.tour.sc==='A'&&S.tour.k===1&&!!agentA()&&S.agentId===agentA().id&&!agentA().tests;
 const prefillCreate=()=>!S.tour.min&&S.tour.sc==='A'&&(S.tour.k||0)===0&&!agentA();
 const asWho=(who,fn)=>{const me=S.me;S.me=who;try{fn()}finally{S.me=me}};
+const tx=x=>typeof x==='function'?x():x;
+const dn=()=>P(dlg()).name;
 const whoOf=st=>typeof st.who==='function'?st.who():st.who;
 const SCEN=[
  {id:'A',name:'① 建立到上架',desc:'組員建立並送審 → 主管核准 → 同事使用',setup:()=>{},steps:[
@@ -528,24 +530,24 @@ const SCEN=[
    {who:'colleague',view:'market',allow:['chatOpen'],point:{sel:'[data-act="bell"]',tip:'核准後同事會收到上架通知'},t:'同事在市集看到並使用',d:'張大明收到上架通知。在「組織自建」找到「客訴回覆助理」，按「開始對話」。',note:'剛上架的會標示「新上架」；對話視窗可以同時開好幾個 AI 助理，用分頁切換。',target:['[data-act="chatOpen"]'],done:()=>!!S.tour.chatted,auto:()=>{S.tour.chatted=true}},
    {who:'other',view:'market',point:{sel:'.acard[data-aid="9"]',tip:'這裡只有生產管理部的 AI 助理'},t:'其他部門看不到',d:'這是生產管理部黃品妤的 Agent 市集，看一下就好，不用操作。',note:'剛上架的「客訴回覆助理」屬於業務一部，所以不在這裡；她只看得到自己部門核准的 AI 助理。',done:()=>true},
  ]},
- {id:'B',name:'② 退回與重送',desc:'主管退回 → 組員依原因修改 → 重新送出後核准',setup:()=>{SCEN[0].steps.forEach(x=>x.auto&&x.auto());prep(DEMO_B)},steps:[
+ {id:'B',cont:()=>prep(DEMO_B),name:'② 退回與重送',desc:'主管退回 → 組員依原因修改 → 重新送出後核准',setup:()=>{SCEN[0].steps.forEach(x=>x.auto&&x.auto());prep(DEMO_B)},steps:[
    {who:'member',view:'agent',agent:()=>agOf(DEMO_B)&&agOf(DEMO_B).id,allow:['openSubmit','doSubmit','saveAgent','testFirst'],t:'組員送出另一個 AI 助理',d:'「交期查詢助理」已經測試過了，直接按右上角「送出審核」。',note:'這次要示範主管退回後，組員怎麼修改再送。',target:['.modal [data-act="doSubmit"]','[data-act="openSubmit"]'],done:()=>!!agOf(DEMO_B)&&agOf(DEMO_B).status!=='draft',auto:()=>A.submit(agOf(DEMO_B).id,'')},
    {who:'manager',view:'review',allow:['startReject','doReject'],t:'主管退回，並寫出原因',d:'按「開始審核」→「退回」，點一個常用原因，再按「確認退回」。',note:'退回一定要填原因，組員才知道要改什麼；常用原因可以一鍵帶入。',target:()=>{const r=document.getElementById('rej-reason');return r?[r.value.trim()?'.modal [data-act="doReject"]':'.modal [data-act="chip"]']:['.modal [data-act="startReject"]','[data-act="openReview"]']},done:()=>{const a=agOf(DEMO_B);return !!a&&a.history.some(h=>h.text.includes('退回：'))},auto:()=>asWho('manager',()=>A.reject(agOf(DEMO_B).id,'回答內容需要再確認'))},
    {who:'member',view:'agents',allow:['saveAgent','openSubmit','doSubmit','testFirst'],point:{sel:'[data-act="bell"]',tip:'退回時組員會收到通知'},t:'組員依原因修改後重新送出',d:'列表顯示「已退回」和原因。按「修改」進入，改一下「角色指令」，按「儲存變更」，再按右上角「重新送出」。',note:'退回原因同時出現在列表、狀態列和通知；沒修改就不能重新送出。',gate:()=>editedAfterReject(agOf(DEMO_B)),gateMsg:'請先依退回原因修改設定，並按「儲存變更」',target:()=>S.view==='agents'?[`[data-act="openAgent"][data-id="${agOf(DEMO_B)&&agOf(DEMO_B).id}"]`]:editedAfterReject(agOf(DEMO_B))?['.modal [data-act="doSubmit"]','[data-act="openSubmit"]']:['#ed-prompt'],done:()=>{const a=agOf(DEMO_B);return !!a&&(a.status==='pending'||a.status==='approved')&&a.history.some(h=>h.text.includes('修改設定'))},auto:()=>asWho('member',()=>{const a=agOf(DEMO_B);A.saveAgent(a.id,a.name,a.desc,a.kb,a.prompt+'\n查不到訂單時，請對方提供正確的訂單號碼。',a.mode);A.submit(a.id,'')})},
    {who:'manager',view:'review',allow:['doApprove'],t:'主管再審，核准上架',d:'這筆標示「退回後重新送出」。按「開始審核」→「核准並上架」。',note:'審核視窗會列出上次退回的原因，主管知道這次要看哪裡；審核紀錄也保留「退回 → 修改 → 重新送出」的完整經過。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!agOf(DEMO_B)&&agOf(DEMO_B).status==='approved',auto:()=>asWho('manager',()=>A.approve(agOf(DEMO_B).id))},
  ]},
- {id:'C',name:'③ 主管請假',desc:'主管排休 → 送出的審核自動轉給代理人',setup:()=>{SCEN[1].setup();SCEN[1].steps.forEach(x=>x.auto&&x.auto());prep(DEMO_C)},steps:[
+ {id:'C',cont:()=>prep(DEMO_C),name:'③ 主管請假',desc:'主管排休 → 送出的審核自動轉給代理人',setup:()=>{SCEN[1].setup();SCEN[1].steps.forEach(x=>x.auto&&x.auto());prep(DEMO_C)},steps:[
    {who:'manager',view:'leave',allow:['openLeave','doLeave'],t:'主管排休並指定代理人',d:'右上角頭像 › 帳號 › 排休與代理。按「新增排休」，代理人維持王副理，按「儲存」。',note:'代理人只能是部門管理職；儲存後頁面會列出交接事項。',target:['.modal [data-act="doLeave"]','[data-act="openLeave"]'],done:()=>!!activeLeave(),auto:()=>A.setLeave(isoDay(),isoDay(6),'deputy')},
    {who:'member',view:'agent',agent:()=>agOf(DEMO_C)&&agOf(DEMO_C).id,allow:['openSubmit','doSubmit','saveAgent','testFirst'],t:'組員照常送出',d:'「庫存查詢助理」已經測試過了，按右上角「送出審核」。',note:'組員不用知道主管請假：送出視窗的審核人會自動變成代理人王副理。',target:['.modal [data-act="doSubmit"]','[data-act="openSubmit"]'],done:()=>!!agOf(DEMO_C)&&agOf(DEMO_C).status!=='draft',auto:()=>A.submit(agOf(DEMO_C).id,'')},
    {who:()=>(S.leave&&S.leave.delegate)||'deputy',view:'review',allow:['doApprove'],t:'代理人審核',d:'按「開始審核」→「核准並上架」。',note:'項目標示「代理林經理」，審核紀錄也會寫明是代理。排休結束後，代理權限自動收回。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!agOf(DEMO_C)&&agOf(DEMO_C).status==='approved',auto:()=>{const a=agOf(DEMO_C);asWho(reviewerOf(a).id,()=>A.approve(a.id))}},
  ]},
- {id:'D',name:'④ 逾期改派',desc:'主管沒空沒處理 → 第 2 天提醒 → 第 4 天預告 → 第 5 天改派',setup:()=>{SCEN[2].setup();SCEN[2].steps.forEach(x=>x.auto&&x.auto());A.endLeave();prep(DEMO_D)},steps:[
+ {id:'D',cont:()=>{if(activeLeave())A.endLeave();prep(DEMO_D)},name:'④ 逾期改派',desc:'主管沒空沒處理 → 第 2 天提醒 → 第 4 天預告 → 第 5 天改派',setup:()=>{SCEN[2].setup();SCEN[2].steps.forEach(x=>x.auto&&x.auto());A.endLeave();prep(DEMO_D)},steps:[
    {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,allow:['openSubmit','doSubmit','saveAgent','testFirst'],t:'組員送出審核',d:'「樣品申請助理」已經測試過了，按右上角「送出審核」。',note:'送出視窗寫著審核時限：5 個工作天。林經理這次在，但一直沒空處理。',target:['.modal [data-act="doSubmit"]','[data-act="openSubmit"]'],done:()=>!!agOf(DEMO_D)&&agOf(DEMO_D).status!=='draft',auto:()=>A.submit(agOf(DEMO_D).id,'')},
-   {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,allow:['ff'],t:'時間一天天過去',d:'按上方黑色列的「快轉到下一個時間點」，共三次，每次看一下狀態列的變化。',note:'第 2 天提醒林經理；第 4 天預告明天逾期（林經理和陳小美都收到）；第 5 天改派給王副理。',target:['[data-act="ff"]'],done:()=>!!(agOf(DEMO_D)&&agOf(DEMO_D).expired),auto:()=>{for(let i=0;i<3&&!agOf(DEMO_D).expired;i++)A.fastForward()}},
-   {who:'deputy',view:'review',allow:['doApprove'],t:'王副理處理改派的審核',d:'按「開始審核」→「核准並上架」。',note:'項目註明「逾期改派，原審核人林經理」。補充：林經理不用等逾期，在審核視窗左下角按「轉交審核」也能交出去。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!(agOf(DEMO_D)&&agOf(DEMO_D).status==='approved'),auto:()=>asWho('deputy',()=>A.approve(agOf(DEMO_D).id))},
-   {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,point:{sel:'.tab-pane.on .timeline',tip:'誰、什麼時候、是否代理，都有紀錄'},t:'回頭看審核紀錄',d:'回到陳小美的「樣品申請助理」，點「審核紀錄」分頁。',note:'送出 → 林經理逾期未審、系統改派 → 王副理（代理林經理）核准，每一步都寫清楚是誰、是否代理，組員不用私下去問。',target:['[data-act="atab"][data-v="history"]'],done:()=>!!S.tour.sawHistory,auto:()=>{S.tour.sawHistory=true}},
+   {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,allow:['ff'],t:'時間一天天過去',d:'按上方黑色列的「快轉到下一個時間點」，共三次，每次看一下狀態列的變化。',note:()=>`第 2 天提醒林經理；第 4 天預告明天逾期（林經理和陳小美都收到）；第 5 天改派給${dn()}（林經理最近指定的代理人）。`,target:['[data-act="ff"]'],done:()=>!!(agOf(DEMO_D)&&agOf(DEMO_D).expired),auto:()=>{for(let i=0;i<3&&!agOf(DEMO_D).expired;i++)A.fastForward()}},
+   {who:()=>dlg(),view:'review',allow:['doApprove'],t:()=>`${dn()}處理改派的審核`,d:'按「開始審核」→「核准並上架」。',note:'項目註明「逾期改派，原審核人林經理」。補充：林經理不用等逾期，在審核視窗左下角按「轉交審核」也能交出去。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!(agOf(DEMO_D)&&agOf(DEMO_D).status==='approved'),auto:()=>{const a=agOf(DEMO_D);asWho(reviewerOf(a).id,()=>A.approve(a.id))}},
+   {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,point:{sel:'.tab-pane.on .timeline',tip:'誰、什麼時候、是否代理，都有紀錄'},t:'回頭看審核紀錄',d:'回到陳小美的「樣品申請助理」，點「審核紀錄」分頁。',note:()=>`送出 → 林經理逾期未審、系統改派 → ${dn()}（代理林經理）核准，每一步都寫清楚是誰、是否代理，組員不用私下去問。`,target:['[data-act="atab"][data-v="history"]'],done:()=>!!S.tour.sawHistory,auto:()=>{S.tour.sawHistory=true}},
  ]},
- {id:'E',name:'⑤ 平台角色綁定',desc:'核准後自動分配給部門角色',setup:()=>{SCEN[3].setup();SCEN[3].steps.forEach(x=>x.auto&&x.auto())},steps:[
+ {id:'E',cont:()=>{},name:'⑤ 平台角色綁定',desc:'核准後自動分配給部門角色',setup:()=>{SCEN[3].setup();SCEN[3].steps.forEach(x=>x.auto&&x.auto())},steps:[
    {who:'owner',view:'roles',allow:['roleOpen'],t:'查看核准後的自動綁定',d:'在組織概覽點業務一部的「編輯」，會直接打開「分配 AI 助理」分頁。',note:'前面核准的四個 AI 助理（客訴回覆、交期查詢、庫存查詢、樣品申請）都自動分配給業務一部角色，只開讀取，並標示核准人或代理人。',target:['[data-act="roleOpen"]'],done:()=>!!S.tour.sawRoles},
  ]},
 ];
@@ -563,6 +565,11 @@ const curScen=()=>SCEN.find(x=>x.id===S.tour.sc)||SCEN[0];
 function startScenario(id){
   const min=S.tour&&S.tour.min;
   SILENT=true;try{S=seed();S.tour={sc:id,k:0,min:!!min,started:true};(SCEN.find(x=>x.id===id)||SCEN[0]).setup();S.notes.forEach(n=>n.read=false)}finally{SILENT=false}
+  UI.float=null;UI.tchat=null;UI.edit=null;goStep(0);UI._forceCue=true;
+}
+function continueScenario(id){
+  const sc=SCEN.find(x=>x.id===id),min=S.tour.min;
+  SILENT=true;try{S.tour={sc:id,k:0,min:!!min,started:true};sc.cont()}finally{SILENT=false}
   UI.float=null;UI.tchat=null;UI.edit=null;goStep(0);UI._forceCue=true;
 }
 function goStep(k){
@@ -603,9 +610,9 @@ function tourPanel(){
   const flash=UI._flashGuide;UI._flashGuide=false;
   return `<div class="guide ${flash?'g-flash':''}">${head}<div class="g-bar"><i style="width:${(k+(done?1:0))/n*100}%"></i></div>
     <div class="g-ch">${P(who).name}（${WHO_LABEL[who]}）</div>
-    <div class="g-t">${st.t}</div>
-    <div class="g-d">${st.d}</div>
-    <div class="g-note">${st.note}</div>
+    <div class="g-t">${tx(st.t)}</div>
+    <div class="g-d">${tx(st.d)}</div>
+    <div class="g-note">${tx(st.note)}</div>
     ${foot}
   </div>`;
 }
@@ -706,7 +713,9 @@ const REVIEWERS=['deputy','lead'];
 const DEPT_MEMBERS=['manager','deputy','lead','member','colleague'];
 const canTake=(a,p)=>p!==a.owner;
 // 逾期時改派給誰：依部門管理職名單的順序找下一位；都不適用才交給系統管理員
-function expireTarget(a){const r=reviewerOf(a);if(!r||r.id==='owner')return null;return REVIEWERS.find(p=>p!==r.id&&canTake(a,p))||'owner'}
+// 逾期改派：先找主管最近一次指定的代理人，沒有的話依部門管理職名單
+function expireTarget(a){const r=reviewerOf(a);if(!r||r.id==='owner')return null;return [S.proxy,...REVIEWERS].find(p=>p&&p!==r.id&&canTake(a,p))||'owner'}
+const dlg=()=>expireDefault();function expireDefault(){return [S.proxy,...REVIEWERS].find(p=>p&&p!=='member')||'deputy'}
 const nm=id=>id==='owner'?`系統管理員${P('owner').name}`:P(id).name;
 function progressText(a){
   const r=reviewerOf(a), L=activeLeave()||{};
@@ -769,6 +778,7 @@ const A={
     toast('已建立草稿');
   },
   setLeave(from,to,delegate){
+    S.proxy=delegate;
     const was=!!activeLeave();
     S.leave={from,to,delegate};
     const pend=S.agents.filter(a=>a.status==='pending');
@@ -1134,7 +1144,7 @@ function vDoc(){
     <table><thead><tr><th style="width:120px">人物</th><th style="width:150px">身分</th><th>在流程中的角色</th></tr></thead><tbody>
       <tr><td>林經理</td><td>業務一部主管</td><td>部門主管（題目說的「直屬主管」），負責審核部門組員送出的 AI 助理</td></tr>
       <tr><td>陳小美</td><td>業務一部組員</td><td>建立「客訴回覆助理」並送出審核；另外三個已測試好的草稿分別示範退回重送（交期查詢助理）、主管請假（庫存查詢助理）、逾期改派（樣品申請助理）</td></tr>
-      <tr><td>王副理</td><td>業務一部副理<br><span class="sub">平台角色：組員</span></td><td>部門管理職：林經理排休時的代理人；審核逾期時的改派對象（部門管理職名單的第一位）</td></tr>
+      <tr><td>王副理</td><td>業務一部副理<br><span class="sub">平台角色：組員</span></td><td>部門管理職：林經理排休時的代理人；審核逾期時的改派對象（林經理最近指定的代理人）</td></tr>
       <tr><td>劉組長</td><td>業務一部組長<br><span class="sub">平台角色：組員</span></td><td>部門管理職：可以被選為代理人或轉交對象（代理人不一定是副理）</td></tr>
       <tr><td>張大明</td><td>業務一部組員</td><td>部門同事，核准後才看得到新的 AI 助理</td></tr>
       <tr><td>黃品妤</td><td>生產管理部組員</td><td>其他部門的同事，用來對照：業務一部的 AI 助理不會出現在她的 Agent 市集</td></tr>
@@ -1172,7 +1182,7 @@ function vDoc(){
     <li><b>主管不能調整「核准後誰可以用」。</b>規則是「組員做的東西，主管核准後給部門用」，所以範圍固定為建立者的部門、只開讀取。讓主管自己挑範圍，等於把權限設定交給每位主管，容易越開越大，也碰到題目排除的「其他權限」。要開放給其他部門或全公司，應該是另一層申請（手冊的「全公司級」上架），不在本題一層核准的範圍。主管若覺得範圍不對，可以退回並說明。</li>
     <li><b>核准一鍵，退回是有意識的第二步。</b>審核視窗只有一個主要按鈕「核准並上架」；按「退回」才展開退回區塊（淡紅底、必填標示、常用原因快選），再按「確認退回」。退回原因不會在核准時佔版面，也避免主管誤按就退回。測試對話的「送出」改成次要按鈕，不跟「核准並上架」搶注意力。</li>
     <li><b>退回必填原因，提供常用原因快選。</b>組員知道要改什麼；主管不用每次從頭打字。</li>
-    <li><b>主管不在或沒空：代理人優先，逾期改派給部門其他管理職。</b>參考一般企業簽核的做法，分三層：第一層，<b>事先排休</b>時在排休視窗選代理人：選單列出部門所有成員，但只有管理職可以選，一般組員不能代理，避免組員互審；第二層，<b>主管在但沒空</b>，可以在審核視窗按「轉交審核」，選部門裡的其他管理職；第三層，<b>臨時病假、來不及處理</b>，靠時限保底：第 2 個工作天提醒主管、第 4 天同時通知主管和建立者「明天逾期將改派給誰」、第 5 天系統依「部門管理職名單」的順序改派給其他管理職，三方都會收到通知。改派對象留在業務部門，因為系統管理員不懂業務內容，不該替部門判斷 AI 助理能不能上架；系統管理員只處理例外（例如代理人自己送出的項目）。AI 助理上架不是急件，所以時限用一週而不是兩天，避免主管只是出差幾天就被系統架空。</li>
+    <li><b>主管不在或沒空：代理人優先，逾期改派給部門其他管理職。</b>參考一般企業簽核的做法，分三層：第一層，<b>事先排休</b>時在排休視窗選代理人：選單列出部門所有成員，但只有管理職可以選，一般組員不能代理，避免組員互審；第二層，<b>主管在但沒空</b>，可以在審核視窗按「轉交審核」，選部門裡的其他管理職；第三層，<b>臨時病假、來不及處理</b>，靠時限保底：第 2 個工作天提醒主管、第 4 天同時通知主管和建立者「明天逾期將改派給誰」、第 5 天系統改派給主管最近一次指定的代理人（沒指定過則依部門管理職名單），三方都會收到通知。改派對象留在業務部門，因為系統管理員不懂業務內容，不該替部門判斷 AI 助理能不能上架；系統管理員只處理例外（例如代理人自己送出的項目）。AI 助理上架不是急件，所以時限用一週而不是兩天，避免主管只是出差幾天就被系統架空。</li>
     <li><b>主管排休沿用平台既有的「我的排休」，放在「帳號」頁。</b>平台的真人客服已經有「我的排休」：設定休假區間，期間內不派工，結束後自動恢復，狀態顯示「排休中（至結束時間）」。審核代理沿用同樣的用詞和行為，只多一個「代理人」欄位，並列出交接事項。位置放在右上角頭像 › 帳號 › 目前組織，因為代理人只在目前組織有效，跟同一組的 Credit 額度、API 金鑰一樣屬於「我在這個組織的設定」。用期間而不用開關，是因為排休通常事先安排，到期自動恢復就不必記得關掉；臨時提早回來可以「提前結束排休」。若公司的請假系統可以串接，排休期間可自動帶入。</li>
     <li><b>狀態透明。</b>組員隨時看得到卡在誰手上、等了幾天，不必私下去問；每一步都記錄是誰、是否代理。</li>
     <li><b>個人通知與公告分開。</b>現有通知中心只有系統公告和組織公告，審核需要的是「給特定人」的通知，所以另外放在鈴鐺的「個人通知」分頁。</li>
@@ -1188,7 +1198,7 @@ function vDoc(){
   </ul>
   <h3>假設與不在範圍內</h3><ul>
     <li>每個部門角色已標記一位主管（題目說明已設定好，本原型不設計設定方式）。</li>
-    <li>每個部門也已標記哪些人是「管理職」（例如副理、組長），可以擔任代理人或被轉交、改派；名單的順序就是逾期改派的順序。跟主管一樣由系統管理員在部門角色設定，不涉及上下級關係，本原型不設計設定方式。</li>
+    <li>每個部門也已標記哪些人是「管理職」（例如副理、組長），可以擔任代理人或被轉交、改派；主管沒指定過代理人時，名單的順序就是逾期改派的順序。跟主管一樣由系統管理員在部門角色設定，不涉及上下級關係，本原型不設計設定方式。</li>
     <li>只有一層核准；改版後是否重新核准、多層簽核、部門與上下級設定不在本題範圍。</li>
     <li>第 2／4／5 個工作天的提醒、預告與改派時限為初始值，實際應依公司審核習慣調整。</li>
     <li>知識庫由平台既有的「知識庫」頁面建立與管理；建立 AI 助理時的選單只列出組員已有權限使用的知識庫，找不到時從選單底部「前往新增知識庫」過去。知識庫本身的權限與審核屬於「其他權限」，不在本題範圍。</li>
@@ -1440,7 +1450,7 @@ document.addEventListener('click',e=>{
     case 'tourPrev':goStep((S.tour.k||0)-1);break;
     case 'tourNext':goStep((S.tour.k||0)+1);break;
     case 'tourAuto':{const sc=curScen(),k=S.tour.k||0;SILENT=true;try{sc.steps.slice(0,k).forEach(p=>{if(!p.done()&&p.auto)p.auto()})}finally{SILENT=false}goStep(k);toast('已完成前面的步驟');break}
-    case 'scenGo':startScenario(v);toast(`已切換到情境${curScen().name}，資料已準備好`);break;
+    case 'scenGo':{const cur=curScen(),nx=SCEN[SCEN.indexOf(cur)+1];if(nx&&nx.id===v&&cur.steps.every(x=>x.done()))continueScenario(v);else startScenario(v)}toast(`已切換到情境${curScen().name}，資料已準備好`);break;
     case 'chatOpen':{const a=byId(id);if(!UI.float)UI.float={chats:[],active:null,min:false};const f=UI.float;
       if(!f.chats.some(x=>x.id===a.id)){if(f.chats.length>=4){f.chats.shift();toast('最多同時開 4 個對話，已關閉最早的一個')}f.chats.push({id:a.id,msgs:[{r:'a',t:`你好，我是「${a.name}」。${a.desc}`}]})}
       f.active=a.id;f.min=false;UI.drawer=null;S.tour.chatted=true;S.opened=S.opened||{};(S.opened[S.me]=S.opened[S.me]||[]).includes(a.id)||S.opened[S.me].push(a.id);render();document.getElementById('f-in')?.focus();return}
