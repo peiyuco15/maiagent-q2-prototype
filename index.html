@@ -543,7 +543,7 @@ const SCEN=[
  ]},
  {id:'D',cont:()=>{if(activeLeave())A.endLeave();prep(DEMO_D)},name:'④ 逾期改派',desc:'主管沒空沒處理 → 第 2 天提醒 → 第 4 天預告 → 第 5 天改派',setup:()=>{SCEN[2].setup();SCEN[2].steps.forEach(x=>x.auto&&x.auto());A.endLeave();prep(DEMO_D)},steps:[
    {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,allow:['openSubmit','doSubmit','saveAgent','testFirst'],t:'組員送出審核',d:'「樣品申請助理」已經測試過了，按右上角「送出審核」。',note:'送出視窗寫著審核時限：5 個工作天。林經理這次在，但一直沒空處理。',target:['.modal [data-act="doSubmit"]','[data-act="openSubmit"]'],done:()=>!!agOf(DEMO_D)&&agOf(DEMO_D).status!=='draft',auto:()=>A.submit(agOf(DEMO_D).id,'')},
-   {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,allow:['ff'],t:'時間一天天過去',d:'按上方黑色列的「快轉到下一個時間點」，共三次，每次看一下狀態列的變化。',note:()=>`第 2 天提醒林經理；第 4 天預告明天逾期（林經理和陳小美都收到）；第 5 天改派給${dn()}（林經理最近指定的代理人）。`,target:['[data-act="ff"]'],done:()=>!!(agOf(DEMO_D)&&agOf(DEMO_D).expired),auto:()=>{for(let i=0;i<3&&!agOf(DEMO_D).expired;i++)A.fastForward()}},
+   {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,allow:['ff'],t:'時間一天天過去',d:'按上方黑色列的「快轉到下一個時間點」，共三次，每次看一下狀態列的變化。',note:()=>`第 2 天提醒林經理；第 4 天預告明天逾期（林經理和陳小美都收到）；第 5 天依部門管理職名單改派給${dn()}。`,target:['[data-act="ff"]'],done:()=>!!(agOf(DEMO_D)&&agOf(DEMO_D).expired),auto:()=>{for(let i=0;i<3&&!agOf(DEMO_D).expired;i++)A.fastForward()}},
    {who:()=>dlg(),view:'review',allow:['doApprove'],t:()=>`${dn()}處理改派的審核`,d:'按「開始審核」→「核准並上架」。',note:'項目註明「逾期改派，原審核人林經理」。補充：林經理不用等逾期，在審核視窗左下角按「轉交審核」也能交出去。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!(agOf(DEMO_D)&&agOf(DEMO_D).status==='approved'),auto:()=>{const a=agOf(DEMO_D);asWho(reviewerOf(a).id,()=>A.approve(a.id))}},
    {who:'member',view:'agent',agent:()=>agOf(DEMO_D)&&agOf(DEMO_D).id,point:{sel:'.tab-pane.on .timeline',tip:'誰、什麼時候、是否代理，都有紀錄'},t:'回頭看審核紀錄',d:'回到陳小美的「樣品申請助理」，點「審核紀錄」分頁。',note:()=>`送出 → 林經理逾期未審、系統改派 → ${dn()}（代理林經理）核准，每一步都寫清楚是誰、是否代理，組員不用私下去問。`,target:['[data-act="atab"][data-v="history"]'],done:()=>!!S.tour.sawHistory,auto:()=>{S.tour.sawHistory=true}},
  ]},
@@ -713,9 +713,9 @@ const REVIEWERS=['deputy','lead'];
 const DEPT_MEMBERS=['manager','deputy','lead','member','colleague'];
 const canTake=(a,p)=>p!==a.owner;
 // 逾期時改派給誰：依部門管理職名單的順序找下一位；都不適用才交給系統管理員
-// 逾期改派：先找主管最近一次指定的代理人，沒有的話依部門管理職名單
-function expireTarget(a){const r=reviewerOf(a);if(!r||r.id==='owner')return null;return [S.proxy,...REVIEWERS].find(p=>p&&p!==r.id&&canTake(a,p))||'owner'}
-const dlg=()=>expireDefault();function expireDefault(){return [S.proxy,...REVIEWERS].find(p=>p&&p!=='member')||'deputy'}
+// 逾期改派：固定依部門管理職名單的順序（先副理、再組長），不受排休時選的代理人影響
+function expireTarget(a){const r=reviewerOf(a);if(!r||r.id==='owner')return null;return REVIEWERS.find(p=>p!==r.id&&canTake(a,p))||'owner'}
+const dlg=()=>REVIEWERS[0];
 const nm=id=>id==='owner'?`系統管理員${P('owner').name}`:P(id).name;
 function progressText(a){
   const r=reviewerOf(a), L=activeLeave()||{};
@@ -778,7 +778,6 @@ const A={
     toast('已建立草稿');
   },
   setLeave(from,to,delegate){
-    S.proxy=delegate;
     const was=!!activeLeave();
     S.leave={from,to,delegate};
     const pend=S.agents.filter(a=>a.status==='pending');
@@ -1144,7 +1143,7 @@ function vDoc(){
     <table><thead><tr><th style="width:120px">人物</th><th style="width:150px">身分</th><th>在流程中的角色</th></tr></thead><tbody>
       <tr><td>林經理</td><td>業務一部主管</td><td>部門主管（題目說的「直屬主管」），負責審核部門組員送出的 AI 助理</td></tr>
       <tr><td>陳小美</td><td>業務一部組員</td><td>建立「客訴回覆助理」並送出審核；另外三個已測試好的草稿分別示範退回重送（交期查詢助理）、主管請假（庫存查詢助理）、逾期改派（樣品申請助理）</td></tr>
-      <tr><td>王副理</td><td>業務一部副理<br><span class="sub">平台角色：組員</span></td><td>部門管理職：林經理排休時的代理人；審核逾期時的改派對象（林經理最近指定的代理人）</td></tr>
+      <tr><td>王副理</td><td>業務一部副理<br><span class="sub">平台角色：組員</span></td><td>部門管理職：林經理排休時的代理人；審核逾期時的改派對象（部門管理職名單的第一位）</td></tr>
       <tr><td>劉組長</td><td>業務一部組長<br><span class="sub">平台角色：組員</span></td><td>部門管理職：可以被選為代理人或轉交對象（代理人不一定是副理）</td></tr>
       <tr><td>張大明</td><td>業務一部組員</td><td>部門同事，核准後才看得到新的 AI 助理</td></tr>
       <tr><td>黃品妤</td><td>生產管理部組員</td><td>其他部門的同事，用來對照：業務一部的 AI 助理不會出現在她的 Agent 市集</td></tr>
@@ -1182,7 +1181,7 @@ function vDoc(){
     <li><b>主管不能調整「核准後誰可以用」。</b>規則是「組員做的東西，主管核准後給部門用」，所以範圍固定為建立者的部門、只開讀取。讓主管自己挑範圍，等於把權限設定交給每位主管，容易越開越大，也碰到題目排除的「其他權限」。要開放給其他部門或全公司，應該是另一層申請（手冊的「全公司級」上架），不在本題一層核准的範圍。主管若覺得範圍不對，可以退回並說明。</li>
     <li><b>核准一鍵，退回是有意識的第二步。</b>審核視窗只有一個主要按鈕「核准並上架」；按「退回」才展開退回區塊（淡紅底、必填標示、常用原因快選），再按「確認退回」。退回原因不會在核准時佔版面，也避免主管誤按就退回。測試對話的「送出」改成次要按鈕，不跟「核准並上架」搶注意力。</li>
     <li><b>退回必填原因，提供常用原因快選。</b>組員知道要改什麼；主管不用每次從頭打字。</li>
-    <li><b>主管不在或沒空：代理人優先，逾期改派給部門其他管理職。</b>參考一般企業簽核的做法，分三層：第一層，<b>事先排休</b>時在排休視窗選代理人：選單列出部門所有成員，但只有管理職可以選，一般組員不能代理，避免組員互審；第二層，<b>主管在但沒空</b>，可以在審核視窗按「轉交審核」，選部門裡的其他管理職；第三層，<b>臨時病假、來不及處理</b>，靠時限保底：第 2 個工作天提醒主管、第 4 天同時通知主管和建立者「明天逾期將改派給誰」、第 5 天系統改派給主管最近一次指定的代理人（沒指定過則依部門管理職名單），三方都會收到通知。改派對象留在業務部門，因為系統管理員不懂業務內容，不該替部門判斷 AI 助理能不能上架；系統管理員只處理例外（例如代理人自己送出的項目）。AI 助理上架不是急件，所以時限用一週而不是兩天，避免主管只是出差幾天就被系統架空。</li>
+    <li><b>主管不在或沒空：代理人優先，逾期改派給部門其他管理職。</b>參考一般企業簽核的做法，分三層：第一層，<b>事先排休</b>時在排休視窗選代理人：選單列出部門所有成員，但只有管理職可以選，一般組員不能代理，避免組員互審；第二層，<b>主管在但沒空</b>，可以在審核視窗按「轉交審核」，選部門裡的其他管理職；第三層，<b>臨時病假、來不及處理</b>，靠時限保底：第 2 個工作天提醒主管、第 4 天同時通知主管和建立者「明天逾期將改派給誰」、第 5 天系統依「部門管理職名單」的順序改派（先副理、再組長），不受排休時選的代理人影響，三方都會收到通知。改派對象留在業務部門，因為系統管理員不懂業務內容，不該替部門判斷 AI 助理能不能上架；系統管理員只處理例外（例如代理人自己送出的項目）。AI 助理上架不是急件，所以時限用一週而不是兩天，避免主管只是出差幾天就被系統架空。</li>
     <li><b>主管排休沿用平台既有的「我的排休」，放在「帳號」頁。</b>平台的真人客服已經有「我的排休」：設定休假區間，期間內不派工，結束後自動恢復，狀態顯示「排休中（至結束時間）」。審核代理沿用同樣的用詞和行為，只多一個「代理人」欄位，並列出交接事項。位置放在右上角頭像 › 帳號 › 目前組織，因為代理人只在目前組織有效，跟同一組的 Credit 額度、API 金鑰一樣屬於「我在這個組織的設定」。用期間而不用開關，是因為排休通常事先安排，到期自動恢復就不必記得關掉；臨時提早回來可以「提前結束排休」。若公司的請假系統可以串接，排休期間可自動帶入。</li>
     <li><b>狀態透明。</b>組員隨時看得到卡在誰手上、等了幾天，不必私下去問；每一步都記錄是誰、是否代理。</li>
     <li><b>個人通知與公告分開。</b>現有通知中心只有系統公告和組織公告，審核需要的是「給特定人」的通知，所以另外放在鈴鐺的「個人通知」分頁。</li>
@@ -1198,7 +1197,7 @@ function vDoc(){
   </ul>
   <h3>假設與不在範圍內</h3><ul>
     <li>每個部門角色已標記一位主管（題目說明已設定好，本原型不設計設定方式）。</li>
-    <li>每個部門也已標記哪些人是「管理職」（例如副理、組長），可以擔任代理人或被轉交、改派；主管沒指定過代理人時，名單的順序就是逾期改派的順序。跟主管一樣由系統管理員在部門角色設定，不涉及上下級關係，本原型不設計設定方式。</li>
+    <li>每個部門也已標記哪些人是「管理職」（例如副理、組長），可以擔任代理人或被轉交、改派；名單的順序就是逾期改派的順序，跟排休時選誰當代理人無關。跟主管一樣由系統管理員在部門角色設定，不涉及上下級關係，本原型不設計設定方式。</li>
     <li>只有一層核准；改版後是否重新核准、多層簽核、部門與上下級設定不在本題範圍。</li>
     <li>第 2／4／5 個工作天的提醒、預告與改派時限為初始值，實際應依公司審核習慣調整。</li>
     <li>知識庫由平台既有的「知識庫」頁面建立與管理；建立 AI 助理時的選單只列出組員已有權限使用的知識庫，找不到時從選單底部「前往新增知識庫」過去。知識庫本身的權限與審核屬於「其他權限」，不在本題範圍。</li>
