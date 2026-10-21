@@ -440,6 +440,8 @@ button.g-li:hover{opacity:1;background:rgba(255,255,255,.08)}
 .rc-msg{font-size:13px;font-weight:700;color:#fff;background:rgba(255,176,32,.18);border-radius:6px;padding:3px 8px;margin-bottom:8px;display:inline-block}
 .ritem-new{animation:rnew 2.4s ease-out}
 @keyframes rnew{0%,40%{background:#fff4d6}100%{background:transparent}}
+.resub{background:var(--red-bg);border-radius:8px;padding:6px 10px;color:#8a2219}
+.resub .sub{color:#8a2219;opacity:.8;margin-top:2px}
 </style>
 </head>
 <body>
@@ -530,7 +532,7 @@ const SCEN=[
    {who:'member',view:'agent',agent:()=>agOf(DEMO_B)&&agOf(DEMO_B).id,allow:['openSubmit','doSubmit','saveAgent','testFirst'],t:'組員送出另一個 AI 助理',d:'「交期查詢助理」已經測試過了，直接按右上角「送出審核」。',note:'這次要示範主管退回後，組員怎麼修改再送。',target:['.modal [data-act="doSubmit"]','[data-act="openSubmit"]'],done:()=>!!agOf(DEMO_B)&&agOf(DEMO_B).status!=='draft',auto:()=>A.submit(agOf(DEMO_B).id,'')},
    {who:'manager',view:'review',allow:['startReject','doReject'],t:'主管退回，並寫出原因',d:'按「開始審核」→「退回」，點一個常用原因，再按「確認退回」。',note:'退回一定要填原因，組員才知道要改什麼；常用原因可以一鍵帶入。',target:()=>{const r=document.getElementById('rej-reason');return r?[r.value.trim()?'.modal [data-act="doReject"]':'.modal [data-act="chip"]']:['.modal [data-act="startReject"]','[data-act="openReview"]']},done:()=>{const a=agOf(DEMO_B);return !!a&&a.history.some(h=>h.text.includes('退回：'))},auto:()=>asWho('manager',()=>A.reject(agOf(DEMO_B).id,'回答內容需要再確認'))},
    {who:'member',view:'agents',allow:['saveAgent','openSubmit','doSubmit','testFirst'],point:{sel:'[data-act="bell"]',tip:'退回時組員會收到通知'},t:'組員依原因修改後重新送出',d:'列表顯示「已退回」和原因。按「修改」進入，改一下「角色指令」，按「儲存變更」，再按右上角「重新送出」。',note:'退回原因同時出現在列表、狀態列和通知；沒修改就不能重新送出。',gate:()=>editedAfterReject(agOf(DEMO_B)),gateMsg:'請先依退回原因修改設定，並按「儲存變更」',target:()=>S.view==='agents'?[`[data-act="openAgent"][data-id="${agOf(DEMO_B)&&agOf(DEMO_B).id}"]`]:editedAfterReject(agOf(DEMO_B))?['.modal [data-act="doSubmit"]','[data-act="openSubmit"]']:['#ed-prompt'],done:()=>{const a=agOf(DEMO_B);return !!a&&(a.status==='pending'||a.status==='approved')&&a.history.some(h=>h.text.includes('修改設定'))},auto:()=>asWho('member',()=>{const a=agOf(DEMO_B);A.saveAgent(a.id,a.name,a.desc,a.kb,a.prompt+'\n查不到訂單時，請對方提供正確的訂單號碼。',a.mode);A.submit(a.id,'')})},
-   {who:'manager',view:'review',allow:['doApprove'],t:'主管再審，核准上架',d:'按「開始審核」→「核准並上架」。',note:'審核紀錄會保留「退回 → 修改 → 重新送出」的完整經過。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!agOf(DEMO_B)&&agOf(DEMO_B).status==='approved',auto:()=>asWho('manager',()=>A.approve(agOf(DEMO_B).id))},
+   {who:'manager',view:'review',allow:['doApprove'],t:'主管再審，核准上架',d:'這筆標示「退回後重新送出」。按「開始審核」→「核准並上架」。',note:'審核視窗會列出上次退回的原因，主管知道這次要看哪裡；審核紀錄也保留「退回 → 修改 → 重新送出」的完整經過。',target:['.modal [data-act="doApprove"]','[data-act="openReview"]'],done:()=>!!agOf(DEMO_B)&&agOf(DEMO_B).status==='approved',auto:()=>asWho('manager',()=>A.approve(agOf(DEMO_B).id))},
  ]},
  {id:'C',name:'③ 主管請假',desc:'主管排休 → 送出的審核自動轉給代理人',setup:()=>{SCEN[1].setup();SCEN[1].steps.forEach(x=>x.auto&&x.auto());prep(DEMO_C)},steps:[
    {who:'manager',view:'leave',allow:['openLeave','doLeave'],t:'主管排休並指定代理人',d:'右上角頭像 › 帳號 › 排休與代理。按「新增排休」，代理人維持王副理，按「儲存」。',note:'代理人只能是部門管理職；儲存後頁面會列出交接事項。',target:['.modal [data-act="doLeave"]','[data-act="openLeave"]'],done:()=>!!activeLeave(),auto:()=>A.setLeave(isoDay(),isoDay(6),'deputy')},
@@ -726,7 +728,7 @@ function isNewFor(a){return a.status==='approved'&&a.approvedDay!=null&&(S.day||
 /* ---------- 動作 ---------- */
 const A={
   submit(id,note){
-    const a=byId(id);const prevReason=a.status==='rejected'?a.rejectReason:null;a.status='pending';a.note=note;a.submittedAt=now();a.reviewedBy=null;a.actingFor=false;a.waitDays=0;a.assignee=null;a.assignWhy=null;a.ev={};a.expired=false;a.rejectReason=null;
+    const a=byId(id);const prevReason=a.status==='rejected'?a.rejectReason:null;a.resubmit=prevReason?{reason:prevReason,by:a.reviewedBy,edits:a.history.slice(a.history.map(h=>h.text).findLastIndex(t=>t.includes('退回：'))+1).filter(h=>h.text.includes('修改設定')).length}:null;a.status='pending';a.note=note;a.submittedAt=now();a.reviewedBy=null;a.actingFor=false;a.waitDays=0;a.assignee=null;a.assignWhy=null;a.ev={};a.expired=false;a.rejectReason=null;
     const r=reviewerOf(a);
     a.history.push({ms:tick(),t:now(),text:`${P(a.owner).name} ${prevReason?'修改後重新送出':'送出審核'}，審核人：${nm(r.id)}`});
     notify(r.id,prevReason?`${P(a.owner).name} 修改後重新送出「${a.name}」，等待你審核${r.acting?'（代理林經理）':''}（上次退回原因：${prevReason}）`:`${P(a.owner).name} 送出「${a.name}」，等待你審核${r.acting?'（代理林經理）':''}`,'review');
@@ -1007,9 +1009,9 @@ function vReview(){
     <div class="tabs"><button class="tab ${UI.rtab==='todo'?'on':''}" data-act="rtab" data-v="todo">待審核（${todo.length}）</button><button class="tab ${UI.rtab==='done'?'on':''}" data-act="rtab" data-v="done">已審核（${done.length}）</button></div>
     ${list.length?list.map(a=>{const r=reviewerOf(a);return `<div class="ritem ${UI.rtab==='done'&&UI.flashId===a.id?'ritem-new':''}">
       ${av(a.owner,36)}
-      <div class="grow"><div class="row-flex"><span class="name">${esc(a.name)}</span>${UI.rtab==='done'?badge(a.status):''}${UI.rtab==='done'&&(()=>{const x=mineRv(a).slice(-1)[0];return x&&x.by!==S.me})()?`<span class="badge b-acting">${esc(P(mineRv(a).slice(-1)[0].by).name)}代理</span>`:''}${r&&r.acting?`<span class="badge b-acting">代理林經理</span>`:''}</div>
+      <div class="grow"><div class="row-flex"><span class="name">${esc(a.name)}</span>${UI.rtab==='done'?badge(a.status):''}${UI.rtab==='done'&&(()=>{const x=mineRv(a).slice(-1)[0];return x&&x.by!==S.me})()?`<span class="badge b-acting">${esc(P(mineRv(a).slice(-1)[0].by).name)}代理</span>`:''}${r&&r.acting?`<span class="badge b-acting">代理林經理</span>`:''}${UI.rtab==='todo'&&a.resubmit?'<span class="badge b-rejected">退回後重新送出</span>':''}</div>
       <div class="sub">${esc(P(a.owner).name)} 送出・${esc(a.submittedAt||'')}${UI.rtab==='todo'&&a.waitDays?`・已等待 ${a.waitDays} 個工作天`:''}${UI.rtab==='todo'&&r&&r.why?`・${esc(r.why)}`:''}${UI.rtab==='todo'&&r&&r.id==='manager'&&!a.expired&&a.waitDays>=WARN?`・<span style="color:var(--orange)">明天逾期</span>`:''}</div>
-      ${a.note?`<div class="sub">送出說明：「${esc(a.note)}」</div>`:''}</div>
+      ${UI.rtab==='todo'&&a.resubmit?`<div class="sub" style="color:var(--red)">上次退回原因：${esc(a.resubmit.reason)}</div>`:''}${a.note?`<div class="sub">送出說明：「${esc(a.note)}」</div>`:''}</div>
       ${UI.rtab==='todo'?`<button class="btn primary" data-act="openReview" data-id="${a.id}">開始審核</button>`:`<button class="btn" data-act="detail" data-id="${a.id}">查看紀錄</button>`}
     </div>`}).join(''):`<div class="empty">${UI.rtab==='todo'?(REVIEWERS.includes(S.me)?'目前沒有轉給你的審核':'沒有待審核的 AI 助理'):'還沒有審核過的 AI 助理'}</div>`}
   </div>`;
@@ -1297,6 +1299,7 @@ function mReview(a){
         <dl class="kv">
           <dt>建立者</dt><dd>${esc(P(a.owner).name)}（${DEPT.name}）</dd>
           <dt>送出時間</dt><dd>${esc(a.submittedAt)}</dd>
+          ${a.resubmit?`<dt>上次退回</dt><dd><div class="resub">${esc(P(a.resubmit.by).name)}退回：${esc(a.resubmit.reason)}<div class="sub">${a.resubmit.edits?'組員已修改設定後重新送出':'組員沒有修改設定就重新送出'}，完整經過見審核紀錄</div></div></dd>`:''}
           <dt>用途</dt><dd>${esc(a.desc)}</dd>
           <dt>模型</dt><dd>${esc(a.model)}・${esc(a.mode||MODES[0])}</dd>
           <dt>知識庫</dt><dd>${esc(a.kb)}</dd>
