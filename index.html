@@ -431,9 +431,9 @@ button.g-li:hover{opacity:1;background:rgba(255,255,255,.08)}
 .welcome .m-b{padding:26px 28px 20px}
 .welcome h2{margin:2px 0 0;font-size:22px}
 .wl-k{font-size:12px;font-weight:700;color:#c47f00;letter-spacing:.06em}
-.wl-list{margin:0;padding-left:20px;line-height:1.7}
-.wl-list li{margin:4px 0}
-.wl-list b{display:inline-block;min-width:150px}
+.wl-list{margin:0;padding:0;list-style:none;line-height:1.6}
+.wl-list li{display:grid;grid-template-columns:130px 1fr;gap:12px;align-items:baseline;margin:6px 0}
+.wl-list b{white-space:nowrap}
 .wl-list span{color:var(--muted);font-size:13px}
 .muted-tab{color:var(--faint)!important}
 .g-point{outline:3px dashed #ffb020;outline-offset:4px;border-radius:12px}
@@ -571,7 +571,7 @@ function mWelcome(){
       <div class="wl-k">MaiAgent 設計題・前端原型</div>
       <h2 id="wl-t">AI 助理上架審核</h2>
       <p class="sub" style="margin:4px 0 16px">從組員建立、送出審核，到部門同事在 Agent 市集看得到這個 AI 助理。</p>
-      <ol class="wl-list">${SCEN.map(x=>`<li><b>${x.name.slice(2)}</b><span>${x.desc}</span></li>`).join('')}</ol>
+      <ol class="wl-list">${SCEN.map(x=>`<li><b>${x.name}</b><span>${x.desc}</span></li>`).join('')}</ol>
       <div class="info" style="margin-top:14px">跟著左下角的導覽一步步操作，要按的地方會標示「按這裡」。上方黑色列可以隨時切換情境或身分。</div>
     </div>
     <div class="m-f"><button class="btn" data-act="tourFree">自由瀏覽</button><button class="btn primary" data-act="tourStart">開始展示</button></div>
