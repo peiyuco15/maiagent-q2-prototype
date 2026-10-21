@@ -1099,7 +1099,7 @@ function vRoleEdit(){
   const rt=UI.roleTab||'分配 AI 助理';
   const ck=on=>`<input type="checkbox" ${on?'checked':''} disabled>`;
   return `<button class="btn link" data-act="roleBack">‹ 返回角色</button>
-  <div class="page-h"><h1>編輯角色：${DEPT.name}</h1><p>沿用平台現有的角色設定頁，不新增權限設定</p></div>
+  <div class="page-h"><h1>編輯角色：${DEPT.name}</h1><p>沿用平台現有的角色設定頁，不新增權限設定</p><div class="spacer"></div><button class="btn" data-act="toast" data-msg="原型只展示結果。成員、主管與權限的編輯沿用平台現有功能，不在本題範圍">編輯</button></div>
   <div class="card" style="padding:0 20px 20px">
     <div class="tabs" style="overflow-x:auto">${tabs.map(t=>{const ok=t==='分配 AI 助理'||t==='分配成員';return `<button class="tab ${t===rt?'on':''} ${ok?'':'muted-tab'}" ${ok?`data-act="roleTab" data-v="${t}"`:`data-act="toast" data-msg="沿用平台現有設定，原型只示範與本題相關的分頁"`} style="white-space:nowrap">${t}</button>`}).join('')}</div>
 ${rt==='分配成員'?`
