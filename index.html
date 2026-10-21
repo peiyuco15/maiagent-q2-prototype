@@ -438,6 +438,8 @@ button.g-li:hover{opacity:1;background:rgba(255,255,255,.08)}
 .muted-tab{color:var(--faint)!important}
 .g-point{outline:3px dashed #ffb020;outline-offset:4px;border-radius:12px}
 .rc-msg{font-size:13px;font-weight:700;color:#fff;background:rgba(255,176,32,.18);border-radius:6px;padding:3px 8px;margin-bottom:8px;display:inline-block}
+.ritem-new{animation:rnew 2.4s ease-out}
+@keyframes rnew{0%,40%{background:#fff4d6}100%{background:transparent}}
 </style>
 </head>
 <body>
@@ -738,7 +740,7 @@ const A={
   },
   approve(id){
     const a=byId(id);const r=reviewerOf(a);
-    a.status='approved';a.approvedAt=now();a.approvedDay=S.day||0;a.reviewedBy=S.me;a.actingFor=!!r.acting;a.rv=(a.rv||[]).concat({by:S.me,res:'approved',acting:!!r.acting,t:now()});
+    a.status='approved';a.approvedAt=now();a.approvedDay=S.day||0;a.reviewedBy=S.me;a.actingFor=!!r.acting;a.rv=(a.rv||[]).concat({by:S.me,res:'approved',acting:!!r.acting,t:now(),ms:tick()});
     if(r.acting&&S.me!=='manager')notify('manager',`${P(S.me).name} 代理你核准了「${a.name}」，已上架到${DEPT.name}`,'review');
     a.history.push({ms:tick(),t:now(),text:`${P(S.me).name}${r.acting?'（代理林經理）':''} 核准，已上架到${DEPT.name}（同事可使用，僅讀取）`});
     notify(a.owner,`「${a.name}」已核准上架，${DEPT.name}同事現在可以使用`,'agents');
@@ -747,7 +749,7 @@ const A={
   },
   reject(id,reason){
     const a=byId(id);const r=reviewerOf(a);
-    a.status='rejected';a.rejectReason=reason;a.reviewedBy=S.me;a.rv=(a.rv||[]).concat({by:S.me,res:'rejected',acting:!!r.acting,t:now()});
+    a.status='rejected';a.rejectReason=reason;a.reviewedBy=S.me;a.rv=(a.rv||[]).concat({by:S.me,res:'rejected',acting:!!r.acting,t:now(),ms:tick()});
     if(r.acting&&S.me!=='manager')notify('manager',`${P(S.me).name} 代理你退回了「${a.name}」：${reason}`,'review');
     a.history.push({ms:tick(),t:now(),text:`${P(S.me).name}${r.acting?'（代理林經理）':''} 退回：${reason}`});
     notify(a.owner,`「${a.name}」被退回：${reason}`,'agents');
@@ -993,7 +995,8 @@ function vReview(){
   const todo=myQueue();
   // 已審核：自己審過的；主管另外看得到代理人替他審的
   const mineRv=a=>(a.rv||[]).filter(x=>x.by===S.me||(S.me==='manager'&&x.acting));
-  const done=S.agents.filter(a=>mineRv(a).length).sort((x,y)=>(y.rv.length?1:0)-(x.rv.length?1:0));
+  const lastMs=a=>(mineRv(a).slice(-1)[0]||{}).ms||0;
+  const done=S.agents.filter(a=>mineRv(a).length).sort((x,y)=>lastMs(y)-lastMs(x));
   const L=activeLeave()||{};
   const actingNote=S.me!=='manager'&&todo.length?`<div class="info" style="margin-bottom:12px">${activeLeave()&&activeLeave().delegate===S.me?`林經理 ${fmtDate(L.from)}–${fmtDate(L.to)} 排休，期間由你代理審核。代理權限只有審核，排休結束自動收回。`:'以下項目轉給你審核（原因標示在每一筆），處理後會記錄為「代理林經理」。'}</div>`:'';
   const managerLeave=S.me==='manager'&&activeLeave()?`<div class="warn" style="margin-bottom:12px">你目前設定為排休中（${fmtDate(L.from)}–${fmtDate(L.to)}），待審項目已轉給 ${P(L.delegate).name}。<button class="btn link" data-act="go" data-v="leave">修改設定</button></div>`:'';
@@ -1002,7 +1005,7 @@ function vReview(){
   ${managerLeave}${actingNote}
   <div class="card">
     <div class="tabs"><button class="tab ${UI.rtab==='todo'?'on':''}" data-act="rtab" data-v="todo">待審核（${todo.length}）</button><button class="tab ${UI.rtab==='done'?'on':''}" data-act="rtab" data-v="done">已審核（${done.length}）</button></div>
-    ${list.length?list.map(a=>{const r=reviewerOf(a);return `<div class="ritem">
+    ${list.length?list.map(a=>{const r=reviewerOf(a);return `<div class="ritem ${UI.rtab==='done'&&UI.flashId===a.id?'ritem-new':''}">
       ${av(a.owner,36)}
       <div class="grow"><div class="row-flex"><span class="name">${esc(a.name)}</span>${UI.rtab==='done'?badge(a.status):''}${UI.rtab==='done'&&(()=>{const x=mineRv(a).slice(-1)[0];return x&&x.by!==S.me})()?`<span class="badge b-acting">${esc(P(mineRv(a).slice(-1)[0].by).name)}代理</span>`:''}${r&&r.acting?`<span class="badge b-acting">代理林經理</span>`:''}</div>
       <div class="sub">${esc(P(a.owner).name)} 送出・${esc(a.submittedAt||'')}${UI.rtab==='todo'&&a.waitDays?`・已等待 ${a.waitDays} 個工作天`:''}${UI.rtab==='todo'&&r&&r.why?`・${esc(r.why)}`:''}${UI.rtab==='todo'&&r&&r.id==='manager'&&!a.expired&&a.waitDays>=WARN?`・<span style="color:var(--orange)">明天逾期</span>`:''}</div>
@@ -1446,7 +1449,7 @@ document.addEventListener('click',e=>{
     case 'roleBack':UI.role=false;break;
     case 'clearFilter':UI.filter='';UI.aq='';break;
     case 'note':{const n=S.notes[+el.dataset.i];n.read=true;UI.notif=false;if(n.view&&allowed(n.view))S.view=n.view;break}
-    case 'rtab':UI.rtab=v;break;
+    case 'rtab':UI.flashId=null;UI.rtab=v;break;
     case 'detail':UI.drawer=+id;break;
     case 'close':if((el.classList.contains('mask')||el.classList.contains('drawer-mask'))&&e.target!==el)return;if(UI.modal&&UI.modal.type==='review')toast('尚未審核，仍保留在待審核清單');UI.modal=null;UI.drawer=null;UI.chat=[];break;
     case 'openSubmit':UI.drawer=null;if(S.view==='agent'&&isDirty()){UI.modal={type:'confirm',title:'有未儲存的變更',text:'送出前要先儲存，主管才會審到最新的設定。',ok:'儲存並送出',then:'saveAndSubmit'};break}UI.modal={type:'submit',id:+id};break;
@@ -1456,8 +1459,8 @@ document.addEventListener('click',e=>{
     case 'chip':{const t=document.getElementById('rej-reason');t.value=t.value.trim()?t.value.trim()+'；'+v:v;t.focus();markTarget();return}
     case 'startReject':UI.rejecting=true;UI.rejText='';render();document.getElementById('rej-reason')?.focus({preventScroll:true});document.querySelector('.reject-box')?.scrollIntoView({block:'end'});fitModal();return;
     case 'cancelReject':UI.rejecting=false;break;
-    case 'doApprove':A.approve(id);UI.modal=null;UI.chat=[];break;
-    case 'doReject':{const r=document.getElementById('rej-reason');if(!r.value.trim()){r.focus();r.style.borderColor='var(--red)';r.placeholder='請填寫退回原因，讓建立者知道要改什麼';return}A.reject(id,r.value.trim());UI.modal=null;UI.chat=[];UI.rejecting=false;break}
+    case 'doApprove':A.approve(id);UI.modal=null;UI.chat=[];UI.rtab='done';UI.flashId=+id;break;
+    case 'doReject':{const r=document.getElementById('rej-reason');if(!r.value.trim()){r.focus();r.style.borderColor='var(--red)';r.placeholder='請填寫退回原因，讓建立者知道要改什麼';return}A.reject(id,r.value.trim());UI.modal=null;UI.rtab='done';UI.flashId=+id;UI.chat=[];UI.rejecting=false;break}
     case 'openCreate':UI.modal={type:'create'};UI.crKb=prefillCreate()?[...DEMO_A.kb]:[];UI.sec='sec-basic';break;
     case 'doCreate':{const miss=['cr-name','cr-desc'].filter(id=>!document.getElementById(id).value.trim());const noKb=!(UI.crKb||[]).length;
       if(miss.length||noKb){toast(miss.length?'請填寫必填欄位':'請至少選擇一個知識庫');UI._keepDrafts=true;render();
