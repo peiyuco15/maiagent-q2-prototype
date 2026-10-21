@@ -437,6 +437,7 @@ button.g-li:hover{opacity:1;background:rgba(255,255,255,.08)}
 .wl-list span{color:var(--muted);font-size:13px}
 .muted-tab{color:var(--faint)!important}
 .g-point{outline:3px dashed #ffb020;outline-offset:4px;border-radius:12px}
+.rc-msg{font-size:13px;font-weight:700;color:#fff;background:rgba(255,176,32,.18);border-radius:6px;padding:3px 8px;margin-bottom:8px;display:inline-block}
 </style>
 </head>
 <body>
@@ -1387,7 +1388,7 @@ function render(){
   UI._keepDrafts=false;
   save();
 }
-let tt;function toast(m){if(SILENT)return;UI.toast=m;const root=document.getElementById('root');if(root){let el=root.querySelector('.toast');if(!el){el=document.createElement('div');el.className='toast';root.appendChild(el)}el.textContent=m}clearTimeout(tt);tt=setTimeout(()=>{UI.toast=null;UI._keepDrafts=true;render()},2200)}
+let tt;function toast(m){if(SILENT)return;UI.toast=m;UI.toastAt=Date.now();const root=document.getElementById('root');if(root){let el=root.querySelector('.toast');if(!el){el=document.createElement('div');el.className='toast';root.appendChild(el)}el.textContent=m}clearTimeout(tt);tt=setTimeout(()=>{UI.toast=null;UI._keepDrafts=true;render()},2200)}
 
 document.addEventListener('click',e=>{
   if(!e.target.closest('.kbp'))document.querySelectorAll('.kbp.open').forEach(x=>{x.classList.remove('open');x.querySelector('.kb-trigger')?.setAttribute('aria-expanded','false')});
@@ -1507,8 +1508,10 @@ function roleSwitchCue(){
   if(!force&&(lastMe===null||lastMe===S.me)){lastMe=S.me;return}
   lastMe=S.me;
   document.getElementById('role-cue')?.remove();clearTimeout(cueT);
+  // 同一個動作同時有提示訊息時，併進身分卡片，避免畫面上兩個地方都要看
+  let msg='';if(UI.toast&&Date.now()-(UI.toastAt||0)<400){msg=UI.toast;UI.toast=null;clearTimeout(tt);document.querySelector('#root .toast')?.remove()}
   const p=P(S.me),d=document.createElement('div');d.id='role-cue';d.className='role-cue';d.setAttribute('role','status');
-  d.innerHTML=`<div class="rc-card"><span class="avatar rc-av" style="background:${p.color}">${esc(p.name[0])}</span><div><div class="rc-k">切換身分</div><div class="rc-n">${esc(p.name)}<span>（${esc(WHO_LABEL[S.me])}）</span></div><div class="rc-d">${esc(DEPT_OF[S.me]||'')}・接下來以${esc(p.name)}的畫面操作</div></div></div>`;
+  d.innerHTML=`<div class="rc-card"><span class="avatar rc-av" style="background:${p.color}">${esc(p.name[0])}</span><div>${msg?`<div class="rc-msg">${esc(msg)}</div>`:''}<div class="rc-k">${msg?'目前身分':'切換身分'}</div><div class="rc-n">${esc(p.name)}<span>（${esc(WHO_LABEL[S.me])}）</span></div><div class="rc-d">${esc(DEPT_OF[S.me]||'')}・接下來以${esc(p.name)}的畫面操作</div></div></div>`;
   d.addEventListener('click',()=>d.remove());document.body.appendChild(d);
   cueT=setTimeout(()=>{d.classList.add('out');setTimeout(()=>d.remove(),300)},3000);
 }
